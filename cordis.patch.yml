@@ -1,0 +1,36 @@
+# ============================================================================
+# better-dsh-pet 的 bundle patch —— 把宠物插件挂进 DSH 配置树
+# ============================================================================
+#
+# 【这是什么】
+#   这是 better-dsh-pet 的"挂载声明"。DSH 启动时按 bundle 层栈把各个插件的
+#   patch 叠起来组成配置树。本文件就是 better-dsh-pet 这一层的内容。
+#
+# 【工作原理】
+#   - insert：往配置树里添加新的插件行（entry）
+#   - 每个 entry 有 id（行标识，patch 覆盖时按它定位）和 name（插件模块）
+#   - name: 'better-dsh-pet' 会解析包入口 lib/index.js（宿主半侧）
+#   - 因为 package.json 声明了 dsh.client，DSH 的模块系统同时会把
+#     这个包扫描为"浏览器插件"，提供 /plugins/better-dsh-pet/client.js 给页面
+#
+# 【config 说明】
+#   这里写的 config 会传给 host 半侧的 apply(ctx, config)，作为 DSH 设置页的
+#   初始值；浏览器半侧只提供设置卡片，不再渲染网页宠物。
+#
+# ============================================================================
+
+- insert:
+    - id: pet                     # 插件行 id（唯一）
+      name: 'better-dsh-pet'      # 模块名：解析到 lib/index.js
+      config:
+        enabled: true             # 是否启用桌面气泡
+        scale: 1                  # 角色大小（70%～140%）
+        bubbleScale: 1            # 气泡大小（80%～120%）
+        activityLevel: normal     # quiet / normal / lively
+        reducedMotion: false      # 减少动态效果
+        bubbleMode: always        # always / hidden / custom
+        bubbleStates: [SUCCESS, ERROR, WAITING]
+        includeSubagents: false   # 是否让子 Agent 参与状态选择
+        workMinutes: 25           # 番茄钟工作时长（分钟）
+        breakMinutes: 5           # 番茄钟休息时长（分钟）
+        roastEnabled: false       # 根据本次对话自动吐槽（会消耗 Token）

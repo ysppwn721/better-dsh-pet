@@ -1,0 +1,7 @@
+{
+  "name": "better-dsh-pet-desktop-helper",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Transparent desktop helper window for better-dsh-pet",
+  "main": "main.js"
+}
