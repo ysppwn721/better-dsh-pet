@@ -5,3 +5,5 @@ debug.png
 debug-console.log
 .DS_Store
 Thumbs.db
+*.bak
+*.bak-*
