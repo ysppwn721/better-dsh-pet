@@ -14,6 +14,8 @@
 > A desktop-native pet bubble driven by [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) session events.
 > 一只住在 Windows 桌面上的透明置顶大肥鱼：由 DSH 真实工作状态驱动，思考/工作/等待/完成/出错时自动切换动画并显示状态气泡。
 
+> 📌 **二创声明**：本项目是基于 [PC2005-cloud/dsh-pet](https://github.com/PC2005-cloud/dsh-pet) 的二创修改版，感谢原作者的桌宠动画与设计。
+
 ---
 
 ## 🚀 快速开始（安装插件）
@@ -63,29 +65,20 @@ dsh plugin --profile web add better-dsh-pet
 dsh plugin --profile web remove better-dsh-pet
 ```
 
-## 🖥️ 运行效果
-
-宠物实际运行在 DSH Web 界面中的样子：
-
-<p>
-  <img src="https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/assets/screenshots/better-dsh-pet-running-1.png" width="380" alt="better-dsh-pet running in DSH Web UI 1" title="better-dsh-pet running in DSH Web UI 1">
-  <img src="https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/assets/screenshots/better-dsh-pet-running-2.png" width="380" alt="better-dsh-pet running in DSH Web UI 2" title="better-dsh-pet running in DSH Web UI 2">
-</p>
-
 ## 🎬 效果预览
 
 > 动画为透明背景；GIF 预览中透明部分显示为页面底色，实际播放为透明。
 
 <p>
-  <img src="https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/better-dsh-pet/assets/preview/daiji-huxi-xiuxian.gif" width="160" alt="待机呼吸休闲" title="待机呼吸休闲">
-  <img src="https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/better-dsh-pet/assets/preview/dongzhangxiwang.gif" width="160" alt="东张西望" title="东张西望">
-  <img src="https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/better-dsh-pet/assets/preview/yuandi-piaofu-tabu.gif" width="160" alt="原地漂浮踏步" title="原地漂浮踏步">
-  <img src="https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/better-dsh-pet/assets/preview/yuandi-xiaoqi-chenmian.gif" width="160" alt="原地小憩沉眠" title="原地小憩沉眠">
-  <img src="https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/better-dsh-pet/assets/preview/dianji-huiying-kaixin-yuedong.gif" width="160" alt="点击回应 - 开心跃动" title="点击回应 - 开心跃动">
-  <img src="https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/better-dsh-pet/assets/preview/beishubiao-tuozhuai-xuankong-fankui.gif" width="160" alt="被鼠标拖拽悬空反馈" title="被鼠标拖拽悬空反馈">
+  <img src="assets/preview/daiji-huxi-xiuxian.gif" width="160" alt="待机呼吸休闲" title="待机呼吸休闲">
+  <img src="assets/preview/dongzhangxiwang.gif" width="160" alt="东张西望" title="东张西望">
+  <img src="assets/preview/yuandi-piaofu-tabu.gif" width="160" alt="原地漂浮踏步" title="原地漂浮踏步">
+  <img src="assets/preview/yuandi-xiaoqi-chenmian.gif" width="160" alt="原地小憩沉眠" title="原地小憩沉眠">
+  <img src="assets/preview/dianji-huiying-kaixin-yuedong.gif" width="160" alt="点击回应 - 开心跃动" title="点击回应 - 开心跃动">
+  <img src="assets/preview/beishubiao-tuozhuai-xuankong-fankui.gif" width="160" alt="被鼠标拖拽悬空反馈" title="被鼠标拖拽悬空反馈">
 </p>
 
-全部 51 个动画见仓库：`better-dsh-pet/assets/thumb/`。
+全部 51 个动画见仓库：`assets/thumb/`。
 
 ## 📚 完整项目（不止是插件）
 

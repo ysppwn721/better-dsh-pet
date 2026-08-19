@@ -13,6 +13,8 @@
 
 > A floating desktop pet for the [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) Web UI: idle breathing, random actions (including dozing off), occasional turns, screen wandering, click reactions, and draggable.
 
+> 📌 **Derivative work notice**: This project is a modified/derived version based on [PC2005-cloud/dsh-pet](https://github.com/PC2005-cloud/dsh-pet). Thanks to the original author for the pet animations and design.
+
 ---
 
 ## 🚀 Quick Start (Install the Plugin)
@@ -53,29 +55,20 @@ Restart `dsh web` and the pet appears in the bottom-right corner — 51 transpar
 dsh plugin --profile web remove better-dsh-pet
 ```
 
-## 🖥️ Running Screenshots
-
-What the pet looks like running inside the DSH Web UI:
-
-<p>
-  <img src="https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/assets/screenshots/better-dsh-pet-running-1.png" width="380" alt="better-dsh-pet running in DSH Web UI 1" title="better-dsh-pet running in DSH Web UI 1">
-  <img src="https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/assets/screenshots/better-dsh-pet-running-2.png" width="380" alt="better-dsh-pet running in DSH Web UI 2" title="better-dsh-pet running in DSH Web UI 2">
-</p>
-
 ## 🎬 Animation Previews
 
 > The animations have transparent backgrounds; in these GIF previews the transparent areas show the page background color, while the actual playback (webm) is transparent.
 
 <p>
-  <img src="https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/better-dsh-pet/assets/preview/daiji-huxi-xiuxian.gif" width="160" alt="Idle breathing & chill" title="Idle breathing & chill">
-  <img src="https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/better-dsh-pet/assets/preview/dongzhangxiwang.gif" width="160" alt="Looking around" title="Looking around">
-  <img src="https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/better-dsh-pet/assets/preview/yuandi-piaofu-tabu.gif" width="160" alt="Floating in place" title="Floating in place">
-  <img src="https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/better-dsh-pet/assets/preview/yuandi-xiaoqi-chenmian.gif" width="160" alt="Napping" title="Napping">
-  <img src="https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/better-dsh-pet/assets/preview/dianji-huiying-kaixin-yuedong.gif" width="160" alt="Click response - happy bounce" title="Click response - happy bounce">
-  <img src="https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/https://raw.githubusercontent.com/ysppwn721/better-dsh-pet/main/better-dsh-pet/assets/preview/beishubiao-tuozhuai-xuankong-fankui.gif" width="160" alt="Dragged by the mouse" title="Dragged by the mouse">
+  <img src="assets/preview/daiji-huxi-xiuxian.gif" width="160" alt="Idle breathing & chill" title="Idle breathing & chill">
+  <img src="assets/preview/dongzhangxiwang.gif" width="160" alt="Looking around" title="Looking around">
+  <img src="assets/preview/yuandi-piaofu-tabu.gif" width="160" alt="Floating in place" title="Floating in place">
+  <img src="assets/preview/yuandi-xiaoqi-chenmian.gif" width="160" alt="Napping" title="Napping">
+  <img src="assets/preview/dianji-huiying-kaixin-yuedong.gif" width="160" alt="Click response - happy bounce" title="Click response - happy bounce">
+  <img src="assets/preview/beishubiao-tuozhuai-xuankong-fankui.gif" width="160" alt="Dragged by the mouse" title="Dragged by the mouse">
 </p>
 
-All 51 animations live in the repo under `better-dsh-pet/assets/thumb/`.
+All 51 animations live in the repo under `assets/thumb/`.
 
 ## 📚 A Complete Project (More Than a Plugin)
 
