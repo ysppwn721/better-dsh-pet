@@ -333,9 +333,9 @@ function startMoveDrive() {
   const el = currentVideo()
   const duration = Number.isFinite(el?.duration) && el.duration > 0 ? el.duration : 9
   // 前 2 秒通常是“准备/亮灯泡”动作，原地不动；
-  // 后 2 秒通常是“收尾/摔倒起身”动作，也不再移动。
+  // 后 3.5 秒通常是“收尾/摔倒起身”动作，也不再移动。
   const lead = 2
-  const tail = 2
+  const tail = 3.5
   const travelWindow = Math.max(0.1, duration - lead - tail)
   const token = ++moveToken
   const step = () => {
