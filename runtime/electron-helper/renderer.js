@@ -234,6 +234,8 @@ function switchTo(next, { once = true, loop = false } = {}) {
     pending = null
     el.style.transform = facing === 'right' ? 'scaleX(-1)' : ''
     el.play().catch(() => {})
+    // 走动动画加载完成后，用真实视频时长驱动移动。
+    if (currentMode === 'move' && movePlan) startMoveDrive()
   }
   el.addEventListener('loadeddata', onReady)
   if (el.readyState >= 2) onReady()
@@ -267,7 +269,8 @@ function playIdle() {
   switchTo(next, { once: true })
   if (isMove) {
     currentMode = 'move'
-    startMoveDrive()
+    // 移动驱动在视频加载完成后启动（switchTo onReady 里调用），
+    // 这样可以使用视频真实时长，避免动画还没播完就提前停下。
   }
   // 随机动作/走动播放时，给出与动作匹配的可爱气泡描述。
   if (next !== IDLE) {
@@ -315,7 +318,7 @@ function tryMove() {
   const minX = -(HIT_BOX.x0 / 640 * size)
   const maxX = W - (HIT_BOX.x1 / 640 * size)
   const dir = Math.random() < 0.5 ? -1 : 1
-  const distance = randomBetween(80, 220)
+  const distance = randomBetween(200, 450)
   const targetX = petPos.x + dir * distance
   if (targetX < minX || targetX > maxX) return false
   movePlan = { startX: petPos.x, targetX }
@@ -325,7 +328,9 @@ function tryMove() {
 function startMoveDrive() {
   if (!movePlan) return
   const plan = movePlan
-  const duration = 3500
+  const el = currentVideo()
+  const videoDuration = Number.isFinite(el?.duration) && el.duration > 0 ? el.duration : 9
+  const duration = Math.max(1000, videoDuration * 1000)
   const startTime = performance.now()
   const token = ++moveToken
   const step = (now) => {
