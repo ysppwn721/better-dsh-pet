@@ -99,6 +99,12 @@ const CLICK_COPY = {
 }
 const EAT_ANIMS = ['吃白饭', '吃早餐', '吃午餐', '吃晚餐', '大口吃零食', '吃Token', '吃冰淇淋融化', '偷吃零食被抓住']
 const MOVES = ['螃蟹走路', '原地漂浮踏步', '原地左转奔跑']
+// 每个走动动画的“开头不动/结尾不动”时长（秒），按动作实际节奏微调。
+const MOVE_TIMING = {
+  '原地漂浮踏步': { lead: 0.8, tail: 0.8 },
+  '螃蟹走路': { lead: 1, tail: 1 },
+  '原地左转奔跑': { lead: 2, tail: 3.5 },
+}
 const STATE_ANIMS = {
   IDLE: [IDLE],
   THINKING: ['深度思考碎碎念', '原地专心玩魔方', '东张西望'],
@@ -332,10 +338,10 @@ function startMoveDrive() {
   const plan = movePlan
   const el = currentVideo()
   const duration = Number.isFinite(el?.duration) && el.duration > 0 ? el.duration : 9
-  // 前 2 秒通常是“准备/亮灯泡”动作，原地不动；
-  // 后 3.5 秒通常是“收尾/摔倒起身”动作，也不再移动。
-  const lead = 2
-  const tail = 3.5
+  // 每个动作的“开头不动/结尾不动”时长不同，按动作单独配置。
+  const timing = MOVE_TIMING[anim] || { lead: 1.5, tail: 2 }
+  const lead = timing.lead
+  const tail = timing.tail
   const travelWindow = Math.max(0.1, duration - lead - tail)
   const token = ++moveToken
   const step = () => {
