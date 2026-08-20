@@ -87,6 +87,9 @@ const ACTION_COPY = {
   '被落叶淹没': '大肥鱼被落叶埋住啦~',
   '中秋赏月吃月饼': '大肥鱼中秋赏月吃月饼~',
   '堆雪人': '大肥鱼在堆雪人~',
+  '螃蟹走路': '大肥鱼横着走路，超嚣张~',
+  '原地漂浮踏步': '大肥鱼原地踏步漂浮中~',
+  '原地左转奔跑': '大肥鱼向左奔跑！',
 }
 const CLICKS = ['点击回应 - 开心跃动', '点击回应 - 害羞惊讶', '点击回应 - 傲娇生气（侧身展示）']
 const CLICK_COPY = {
@@ -178,6 +181,9 @@ let pomodoro = null
 let pomodoroTimer = null
 let menuPage = 'main'
 let lastMenuPos = { x: 0, y: 0 }
+let moveRef = null
+let moveToken = 0
+let movePlan = null
 
 // ---------- 工具 ----------
 const randomBetween = (min, max) => Math.floor(min + Math.random() * (max - min))
@@ -235,9 +241,11 @@ function switchTo(next, { once = true, loop = false } = {}) {
 
 // ---------- 播放控制 ----------
 function playIdle() {
+  stopMove()
   currentMode = 'idle'
   const roll = Math.random()
   let next = IDLE
+  let isMove = false
   if (roll < 0.3) {
     next = IDLE
   } else if (roll < 0.4) {
@@ -245,13 +253,23 @@ function playIdle() {
   } else if (roll < 0.8) {
     next = pick(ACTS, anim)
   } else {
-    next = pick(ACTS, anim) // 桌面版暂不实现自动漫游，避免窗口移动过于复杂
+    // 20% 概率尝试走动；空间不够时退回随机动作。
+    if (tryMove()) {
+      next = pick(MOVES, anim)
+      isMove = true
+    } else {
+      next = pick(ACTS, anim)
+    }
   }
   anim = next
   animOnce = true
   animLoop = false
   switchTo(next, { once: true })
-  // 随机动作播放时，给出与动作匹配的可爱气泡描述。
+  if (isMove) {
+    currentMode = 'move'
+    startMoveDrive()
+  }
+  // 随机动作/走动播放时，给出与动作匹配的可爱气泡描述。
   if (next !== IDLE) {
     const copy = ACTION_COPY[next] || '大肥鱼正在表演小动作~'
     showManualBubble(copy, '大肥鱼的小剧场~', 4200)
@@ -259,6 +277,7 @@ function playIdle() {
 }
 
 function playState(state, { pulse = false } = {}) {
+  stopMove()
   currentMode = pulse ? 'pulse' : 'state'
   const pool = STATE_ANIMS[state] || STATE_ANIMS.IDLE
   const next = state === 'IDLE' ? IDLE : pick(pool, anim)
@@ -270,6 +289,7 @@ function playState(state, { pulse = false } = {}) {
 }
 
 function playClick() {
+  stopMove()
   currentMode = 'click'
   const next = pick(CLICKS, anim)
   anim = next
@@ -280,11 +300,56 @@ function playClick() {
 }
 
 function playDrag() {
+  stopMove()
   currentMode = 'drag'
   anim = DRAG
   animOnce = true
   animLoop = false
   switchTo(DRAG, { once: true })
+}
+
+// ---------- 走动效果 ----------
+function tryMove() {
+  if (moveRef !== null || movePlan) return true
+  const W = window.innerWidth
+  const minX = -(HIT_BOX.x0 / 640 * size)
+  const maxX = W - (HIT_BOX.x1 / 640 * size)
+  const dir = Math.random() < 0.5 ? -1 : 1
+  const distance = randomBetween(80, 220)
+  const targetX = petPos.x + dir * distance
+  if (targetX < minX || targetX > maxX) return false
+  movePlan = { startX: petPos.x, targetX }
+  return true
+}
+
+function startMoveDrive() {
+  if (!movePlan) return
+  const plan = movePlan
+  const duration = 3500
+  const startTime = performance.now()
+  const token = ++moveToken
+  const step = (now) => {
+    if (moveToken !== token || !movePlan) return
+    const t = Math.min(1, (now - startTime) / duration)
+    petPos.x = plan.startX + (plan.targetX - plan.startX) * t
+    applyPetPosition()
+    if (t < 1) {
+      moveRef = requestAnimationFrame(step)
+    } else {
+      moveRef = null
+      movePlan = null
+    }
+  }
+  moveRef = requestAnimationFrame(step)
+}
+
+function stopMove() {
+  movePlan = null
+  moveToken++
+  if (moveRef !== null) {
+    cancelAnimationFrame(moveRef)
+    moveRef = null
+  }
 }
 
 function handleEnded() {
@@ -299,6 +364,11 @@ function handleEnded() {
   }
   if (currentMode === 'click') {
     applyResume()
+    return
+  }
+  if (currentMode === 'move') {
+    stopMove()
+    playIdle()
     return
   }
   if (currentMode === 'state') {
@@ -584,6 +654,7 @@ document.addEventListener('mousemove', (e) => {
 })
 
 function startDrag(e) {
+  stopMove()
   e.currentTarget.classList.add('dragging')
   try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* 忽略捕获失败 */ }
   dragState = {
