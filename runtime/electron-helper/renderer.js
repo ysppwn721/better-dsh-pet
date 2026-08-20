@@ -103,7 +103,7 @@ const MOVES = ['螃蟹走路', '原地漂浮踏步', '原地左转奔跑']
 const MOVE_TIMING = {
   '原地漂浮踏步': { lead: 0.8, tail: 0.8 },
   '螃蟹走路': { lead: 1, tail: 1 },
-  '原地左转奔跑': { lead: 2, tail: 3.5 },
+  '原地左转奔跑': { lead: 2, tail: 6 },
 }
 const STATE_ANIMS = {
   IDLE: [IDLE],
