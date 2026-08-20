@@ -321,6 +321,8 @@ function tryMove() {
   const distance = randomBetween(200, 450)
   const targetX = petPos.x + dir * distance
   if (targetX < minX || targetX > maxX) return false
+  // 让角色面朝移动方向，避免“向左跑却镜像成向右”的错乱。
+  facing = dir > 0 ? 'right' : 'left'
   movePlan = { startX: petPos.x, targetX }
   return true
 }
@@ -329,16 +331,26 @@ function startMoveDrive() {
   if (!movePlan) return
   const plan = movePlan
   const el = currentVideo()
-  const videoDuration = Number.isFinite(el?.duration) && el.duration > 0 ? el.duration : 9
-  const duration = Math.max(1000, videoDuration * 1000)
-  const startTime = performance.now()
+  const duration = Number.isFinite(el?.duration) && el.duration > 0 ? el.duration : 9
+  // 前 2 秒通常是“准备/亮灯泡”动作，原地不动；
+  // 后 2 秒通常是“收尾/摔倒起身”动作，也不再移动。
+  const lead = 2
+  const tail = 2
+  const travelWindow = Math.max(0.1, duration - lead - tail)
   const token = ++moveToken
-  const step = (now) => {
+  const step = () => {
     if (moveToken !== token || !movePlan) return
-    const t = Math.min(1, (now - startTime) / duration)
-    petPos.x = plan.startX + (plan.targetX - plan.startX) * t
+    const t = el.currentTime || 0
+    let x = plan.startX
+    if (t > lead && t < duration - tail) {
+      const progress = Math.min(1, Math.max(0, (t - lead) / travelWindow))
+      x = plan.startX + (plan.targetX - plan.startX) * progress
+    } else if (t >= duration - tail) {
+      x = plan.targetX
+    }
+    petPos.x = x
     applyPetPosition()
-    if (t < 1) {
+    if (t < duration - tail) {
       moveRef = requestAnimationFrame(step)
     } else {
       moveRef = null
