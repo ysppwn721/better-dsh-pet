@@ -20,6 +20,8 @@ const CONFIG = {
   roastEnabled: params.get('roastEnabled') === '1',
   walkEnabled: params.get('walkEnabled') !== '0',
   enabledActions: [],
+  actionOrder: [],
+  petSize: Number(params.get('petSize') || '462'),
 }
 
 // ---------- 资源根 ----------
@@ -35,15 +37,23 @@ const IDLE = '待机呼吸休闲'
 const TURN = '东张西望'
 const DRAG = '被鼠标拖拽悬空反馈'
 const ACTS = [
-  '悠闲哼歌', '超大伸懒腰', '原地专心玩魔方', '原地敲击桌面互动',
-  '原地重力下蹲压缩', '哈欠连天', '原地小憩沉眠', '原地蹲下玩玩具汽车',
-  '鲸鱼吐泡泡特效', '女仆屈膝礼仪', '被吓一跳（炸毛）', '原地跳跃抓碎头顶物品',
-  '小幅度原地 360 度旋转展示', '偷吃零食被抓住', '玩游戏气急败坏',
-  '用鲸鱼尾巴拍打地面', '打瞌睡被惊醒', '玩水枪', '小提琴演奏', '蓝鲸现世',
-  '吃白饭', '照镜子', '优雅女仆舞', '轻快摇摆舞', '可爱宅舞', '整体换装试色',
-  '大口吃零食', '吹气球', '动物环绕', '深度思考碎碎念', '轻快记录', '写代码',
-  '吃Token', '吃早餐', '吃午餐', '吃晚餐', '放风筝', '摇扇纳凉', '吃冰淇淋融化',
-  '被落叶淹没', '中秋赏月吃月饼', '堆雪人',
+  '被落叶淹没', '被吓一跳', '变鸽子', '插茱萸赏菊', '拆礼物',
+  '超大伸懒腰', '晨间刷牙', '吃Token', '吃白饭', '吃冰淇淋融化',
+  '吃大闸蟹', '吃饺子', '吃腊八粥', '吃年糕', '吃青团',
+  '吃汤圆', '吃糖葫芦', '吃晚餐', '吃午餐', '吃西瓜',
+  '吃早餐', '吃长寿面', '吃重阳糕', '吃粽子', '抽陀螺',
+  '穿针乞巧', '吹笛子', '吹气球', '打瞌睡被惊醒', '大口吃零食',
+  '荡秋千', '动物环绕', '堆雪人', '放风筝', '放河灯',
+  '放孔明灯', '放烟花', '哈欠连天', '蝴蝶蜜蜂环绕头顶开花', '鲸鱼吐泡泡特效',
+  '可爱宅舞', '蓝鲸现世', '撸猫', '萌化小幽灵', '女仆屈膝礼仪',
+  '凭空生花', '扑克魔术', '骑木马', '轻快记录', '轻快摇摆舞',
+  '三球抛接', '深度思考碎碎念', '是啊，吃什么', '收红包', '涮火锅',
+  '讨糖南瓜灯', '踢毽子', '偷吃零食被抓住', '玩水枪', '玩游戏气急败坏',
+  '舞狮头', '下五子棋', '小幅度原地360度旋转展示', '小提琴演奏', '写代码',
+  '写福字', '摇扇纳凉', '用鲸鱼尾巴拍打地面', '优雅女仆舞', '悠闲哼歌',
+  '原地蹲下玩玩具汽车', '原地敲击桌面互动', '原地跳跃抓碎头顶物品', '原地小憩沉眠',
+  '原地重力下蹲压缩', '原地专心玩魔方', '照镜子', '整体换装试色',
+  '中秋赏月吃月饼', '装点圣诞树',
 ]
 const ACTION_COPY = {
   '东张西望': '大肥鱼东张西望，看看有没有鱼干~',
@@ -57,9 +67,9 @@ const ACTION_COPY = {
   '原地蹲下玩玩具汽车': '大肥鱼蹲在地上玩小汽车~',
   '鲸鱼吐泡泡特效': '大肥鱼吐出一串可爱的泡泡~',
   '女仆屈膝礼仪': '大肥鱼向你行了个女仆礼~',
-  '被吓一跳（炸毛）': '大肥鱼被吓得炸毛啦！',
+  '被吓一跳': '大肥鱼被吓得炸毛啦！',
   '原地跳跃抓碎头顶物品': '大肥鱼跳起来抓碎了头顶的东西~',
-  '小幅度原地 360 度旋转展示': '大肥鱼原地转圈圈展示自己~',
+  '小幅度原地360度旋转展示': '大肥鱼原地转圈圈展示自己~',
   '偷吃零食被抓住': '大肥鱼偷吃零食被抓住啦！',
   '玩游戏气急败坏': '大肥鱼玩游戏玩到气急败坏~',
   '用鲸鱼尾巴拍打地面': '大肥鱼用尾巴拍地面抗议~',
@@ -93,11 +103,13 @@ const ACTION_COPY = {
   '原地漂浮踏步': '大肥鱼原地踏步漂浮中~',
   '原地左转奔跑': '大肥鱼向左奔跑！',
 }
-const CLICKS = ['点击回应 - 开心跃动', '点击回应 - 害羞惊讶', '点击回应 - 傲娇生气（侧身展示）']
+const CLICKS = ['点击回应-开心跃动', '点击回应-害羞惊讶', '点击回应-傲娇生气', '点击回应-挠痒咯咯笑', '点击回应-元气挥手']
 const CLICK_COPY = {
-  '点击回应 - 开心跃动': '大肥鱼被摸得好开心~',
-  '点击回应 - 害羞惊讶': '大肥鱼害羞地躲了一下~',
-  '点击回应 - 傲娇生气（侧身展示）': '大肥鱼傲娇地哼了一声！',
+  '点击回应-开心跃动': '大肥鱼被摸得好开心~',
+  '点击回应-害羞惊讶': '大肥鱼害羞地躲了一下~',
+  '点击回应-傲娇生气': '大肥鱼傲娇地哼了一声！',
+  '点击回应-挠痒咯咯笑': '大肥鱼被挠痒痒，咯咯笑~',
+  '点击回应-元气挥手': '大肥鱼元气满满地挥手~',
 }
 const EAT_ANIMS = ['吃白饭', '吃早餐', '吃午餐', '吃晚餐', '大口吃零食', '吃Token', '吃冰淇淋融化', '偷吃零食被抓住']
 const MOVES = ['螃蟹走路', '原地漂浮踏步', '原地左转奔跑']
@@ -112,8 +124,8 @@ const STATE_ANIMS = {
   THINKING: ['深度思考碎碎念', '原地专心玩魔方', '东张西望'],
   WORKING: ['写代码', '轻快记录', '原地敲击桌面互动', '吃Token'],
   WAITING: ['东张西望', '悠闲哼歌', '原地敲击桌面互动'],
-  SUCCESS: ['点击回应 - 开心跃动', '优雅女仆舞', '轻快摇摆舞', '可爱宅舞', '女仆屈膝礼仪'],
-  ERROR: ['被吓一跳（炸毛）', '玩游戏气急败坏', '偷吃零食被抓住'],
+  SUCCESS: ['点击回应-开心跃动', '优雅女仆舞', '轻快摇摆舞', '可爱宅舞', '女仆屈膝礼仪'],
+  ERROR: ['被吓一跳', '玩游戏气急败坏', '偷吃零食被抓住'],
 }
 
 // ---------- DOM ----------
@@ -128,7 +140,7 @@ const bubbleDetail = document.getElementById('bubble-detail')
 const menuEl = document.getElementById('menu')
 
 // ---------- 基础尺寸 ----------
-const size = 462 * CONFIG.scale
+const size = (CONFIG.petSize || 462) * CONFIG.scale
 const halfW = size / 2
 const halfH = size * 9 / 16 / 2
 const bottomPad = (size * 9 / 16 * (CANVAS_H - FEET_Y)) / CANVAS_H
@@ -192,6 +204,7 @@ let lastMenuPos = { x: 0, y: 0 }
 let moveRef = null
 let moveToken = 0
 let movePlan = null
+let actionOrderIndex = 0
 
 // ---------- 工具 ----------
 const randomBetween = (min, max) => Math.floor(min + Math.random() * (max - min))
@@ -258,22 +271,32 @@ function playIdle() {
     ? ACTS.filter((name) => CONFIG.enabledActions.includes(name))
     : ACTS
   const usableActions = actionPool.length > 0 ? actionPool : ACTS
-  const roll = Math.random()
+  // 自定义播放顺序：非空时按顺序循环播放。
+  const order = CONFIG.actionOrder.length > 0
+    ? CONFIG.actionOrder.filter((name) => ACTS.includes(name) || MOVES.includes(name) || name === TURN)
+    : []
   let next = IDLE
   let isMove = false
-  if (roll < 0.3) {
-    next = IDLE
-  } else if (roll < 0.4) {
-    next = TURN
-  } else if (roll < 0.8) {
-    next = pick(usableActions, anim)
+  if (order.length > 0) {
+    next = order[actionOrderIndex % order.length]
+    actionOrderIndex++
+    if (MOVES.includes(next) && CONFIG.walkEnabled && tryMove()) isMove = true
   } else {
-    // 20% 概率尝试走动（可关闭）；空间不够或关闭时退回随机动作。
-    if (CONFIG.walkEnabled && tryMove()) {
-      next = pick(MOVES, anim)
-      isMove = true
-    } else {
+    const roll = Math.random()
+    if (roll < 0.3) {
+      next = IDLE
+    } else if (roll < 0.4) {
+      next = TURN
+    } else if (roll < 0.8) {
       next = pick(usableActions, anim)
+    } else {
+      // 20% 概率尝试走动（可关闭）；空间不够或关闭时退回随机动作。
+      if (CONFIG.walkEnabled && tryMove()) {
+        next = pick(MOVES, anim)
+        isMove = true
+      } else {
+        next = pick(usableActions, anim)
+      }
     }
   }
   anim = next
@@ -287,7 +310,7 @@ function playIdle() {
   }
   // 随机动作/走动播放时，给出与动作匹配的可爱气泡描述。
   if (next !== IDLE) {
-    const copy = ACTION_COPY[next] || '大肥鱼正在表演小动作~'
+    const copy = ACTION_COPY[next] || `大肥鱼正在${next}~`
     showManualBubble(copy, '大肥鱼的小剧场~', 4200)
   }
 }
@@ -967,6 +990,8 @@ function applyStatus(incoming) {
     CONFIG.roastEnabled = incoming.config.roastEnabled === true
     CONFIG.walkEnabled = incoming.config.walkEnabled !== false
     CONFIG.enabledActions = Array.isArray(incoming.config.enabledActions) ? incoming.config.enabledActions : []
+    CONFIG.actionOrder = Array.isArray(incoming.config.actionOrder) ? incoming.config.actionOrder : []
+    CONFIG.petSize = Number(incoming.config.petSize) || CONFIG.petSize
   }
 
   if (incoming.tokenUsage) {

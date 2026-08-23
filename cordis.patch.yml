@@ -36,3 +36,5 @@
         roastEnabled: false       # 根据本次对话自动吐槽（会消耗 Token）
         walkEnabled: true         # 待机时是否允许走动
         enabledActions: []        # 自定义待机动作（留空=全部动作）
+        actionOrder: []           # 自定义待机动作播放顺序（留空=随机）
+        petSize: 462              # 宠物宽度（px）

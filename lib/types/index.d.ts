@@ -50,6 +50,10 @@ export interface Config {
     walkEnabled?: boolean;
     /** 自定义待机动作（留空=全部动作）。 */
     enabledActions?: string[];
+    /** 自定义待机动作播放顺序（留空=随机）。 */
+    actionOrder?: string[];
+    /** 宠物宽度（px）。默认 462。 */
+    petSize?: number;
     /** 旧版 /pet 路由的 full 资源根目录。 */
     fullRoot?: string;
     /** Helper 进程选项。 */

@@ -35,6 +35,8 @@ export interface Config {
     roastEnabled?: boolean;
     walkEnabled?: boolean;
     enabledActions?: string[];
+    actionOrder?: string[];
+    petSize?: number;
 }
 
 /**
