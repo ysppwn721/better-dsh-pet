@@ -824,12 +824,18 @@ function showMenu(x, y) {
   } else {
     renderMainMenu()
   }
-  menuEl.style.left = Math.min(x, window.innerWidth - 220) + 'px'
-  menuEl.style.top = Math.min(y, window.innerHeight - 240) + 'px'
   // 外层菜单不滚动，动作列表等长内容由内部子面板自己滚动，避免出现双滚动条。
   menuEl.style.maxHeight = 'none'
   menuEl.style.overflowY = 'visible'
   menuEl.classList.add('visible')
+  // 让菜单向右上方展开，避开宠物模型；再根据实际尺寸夹在屏幕内。
+  const rect = menuEl.getBoundingClientRect()
+  let left = x + 24
+  let top = y - rect.height - 12
+  left = Math.max(4, Math.min(left, window.innerWidth - rect.width - 4))
+  top = Math.max(4, Math.min(top, window.innerHeight - rect.height - 4))
+  menuEl.style.left = left + 'px'
+  menuEl.style.top = top + 'px'
   window.petBridge.setIgnoreMouse(false)
 }
 
