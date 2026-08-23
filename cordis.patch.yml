@@ -37,4 +37,4 @@
         walkEnabled: true         # 待机时是否允许走动
         enabledActions: []        # 自定义待机动作（留空=全部动作）
         actionOrder: []           # 自定义待机动作播放顺序（留空=随机）
-        petSize: 462              # 宠物宽度（px）
+        petSize: 460              # 宠物宽度（px）[patched: 462 非 10 倍数, schema step(10) 校验失败]
