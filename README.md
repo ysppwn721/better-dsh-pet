@@ -21,11 +21,9 @@
 
 ## 🎬 视频推广
 
-> 📹 演示视频占位：拍好视频后把链接放到这里。
+> 📹 点击观看 better-dsh-pet 演示视频：
 >
-> ```md
-> [▶️ 点击观看 better-dsh-pet 演示视频](https://www.bilibili.com/video/你的视频ID)
-> ```
+> [▶️ B站：一行命令，把大肥鱼放到桌面](https://www.bilibili.com/video/BV1YH8h6WEvi)
 
 ---
 
