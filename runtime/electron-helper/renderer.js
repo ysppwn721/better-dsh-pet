@@ -297,19 +297,17 @@ function playIdle() {
     actionOrderIndex++
     if (MOVES.includes(next) && CONFIG.walkEnabled && tryMove(next)) isMove = true
   } else {
-    const roll = Math.random()
-    if (roll < 0.3) {
-      next = IDLE
-    } else if (roll < 0.4) {
-      next = TURN
-    } else if (roll < 0.8) {
-      next = pick(usableActions, anim)
+    // 移动频繁度 = 每次待机决策时尝试走动的概率（可关闭）。
+    const moveCandidate = pick(MOVES, anim)
+    if (CONFIG.walkEnabled && Math.random() * 100 < CONFIG.moveChance && tryMove(moveCandidate)) {
+      next = moveCandidate
+      isMove = true
     } else {
-      // 按“移动频繁度”概率尝试走动（可关闭）；空间不够或关闭时退回随机动作。
-      const moveCandidate = pick(MOVES, anim)
-      if (CONFIG.walkEnabled && Math.random() * 100 < CONFIG.moveChance && tryMove(moveCandidate)) {
-        next = moveCandidate
-        isMove = true
+      const roll = Math.random()
+      if (roll < 0.3) {
+        next = IDLE
+      } else if (roll < 0.4) {
+        next = TURN
       } else {
         next = pick(usableActions, anim)
       }
