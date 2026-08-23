@@ -89,7 +89,9 @@
 
 - 自动读取 DeepSeek 账户余额
 - 气泡中显示余额，如 `余额 ¥11.06`
-- 定时刷新
+- 每次对话结束后自动刷新
+- 每 5 分钟定时刷新
+- 点击余额气泡可手动刷新
 
 ### 🍅 番茄钟
 
@@ -244,7 +246,7 @@ dsh plugin --profile web remove better-dsh-pet
 ### DSH 设置页
 
 ```text
-设置 → 插件 → 插件配置 → 大肥鱼桌面伴侣
+设置 → 插件 → 插件配置 → Better DSH Pet（大肥鱼增强版）
 ```
 
 | 配置项 | 说明 | 默认 |
@@ -283,6 +285,12 @@ dsh plugin --profile web remove better-dsh-pet
 - 需要 DSH 中配置了 `DEEPSEEK_API_KEY`
 - 插件会自动读取 `~/.dsh/.credentials.yaml`
 - 网络不通时不会显示
+
+### Q：余额多久刷新一次？
+
+- 每次对话/任务结束后自动刷新
+- 每 5 分钟定时刷新
+- 点击余额气泡可手动刷新
 
 ### Q：自动吐槽会消耗 Token 吗？
 
