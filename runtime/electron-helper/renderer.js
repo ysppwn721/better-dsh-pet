@@ -280,7 +280,7 @@ function playIdle() {
   if (order.length > 0) {
     next = order[actionOrderIndex % order.length]
     actionOrderIndex++
-    if (MOVES.includes(next) && CONFIG.walkEnabled && tryMove()) isMove = true
+    if (MOVES.includes(next) && CONFIG.walkEnabled && tryMove(next)) isMove = true
   } else {
     const roll = Math.random()
     if (roll < 0.3) {
@@ -291,8 +291,9 @@ function playIdle() {
       next = pick(usableActions, anim)
     } else {
       // 20% 概率尝试走动（可关闭）；空间不够或关闭时退回随机动作。
-      if (CONFIG.walkEnabled && tryMove()) {
-        next = pick(MOVES, anim)
+      const moveCandidate = pick(MOVES, anim)
+      if (CONFIG.walkEnabled && tryMove(moveCandidate)) {
+        next = moveCandidate
         isMove = true
       } else {
         next = pick(usableActions, anim)
@@ -348,18 +349,31 @@ function playDrag() {
 }
 
 // ---------- 走动效果 ----------
-function tryMove() {
+function tryMove(moveName) {
   if (moveRef !== null || movePlan) return true
   const W = window.innerWidth
+  const H = window.innerHeight
   const minX = -(HIT_BOX.x0 / 640 * size)
   const maxX = W - (HIT_BOX.x1 / 640 * size)
+  const minY = 0
+  const maxY = H - size * 9 / 16
+
+  // “原地漂浮踏步”面朝观众，适合稍微向屏幕下方（朝用户）移动一点。
+  if (moveName === '原地漂浮踏步') {
+    const distance = randomBetween(40, 90)
+    const targetY = petPos.y + distance
+    if (targetY > maxY) return false
+    movePlan = { startX: petPos.x, targetX: petPos.x, startY: petPos.y, targetY }
+    return true
+  }
+
   const dir = Math.random() < 0.5 ? -1 : 1
   const distance = randomBetween(200, 450)
   const targetX = petPos.x + dir * distance
   if (targetX < minX || targetX > maxX) return false
   // 让角色面朝移动方向，避免“向左跑却镜像成向右”的错乱。
   facing = dir > 0 ? 'right' : 'left'
-  movePlan = { startX: petPos.x, targetX }
+  movePlan = { startX: petPos.x, targetX, startY: petPos.y, targetY: petPos.y }
   return true
 }
 
@@ -378,13 +392,17 @@ function startMoveDrive() {
     if (moveToken !== token || !movePlan) return
     const t = el.currentTime || 0
     let x = plan.startX
+    let y = plan.startY ?? petPos.y
     if (t > lead && t < duration - tail) {
       const progress = Math.min(1, Math.max(0, (t - lead) / travelWindow))
       x = plan.startX + (plan.targetX - plan.startX) * progress
+      y = (plan.startY ?? petPos.y) + ((plan.targetY ?? petPos.y) - (plan.startY ?? petPos.y)) * progress
     } else if (t >= duration - tail) {
       x = plan.targetX
+      y = plan.targetY ?? petPos.y
     }
     petPos.x = x
+    petPos.y = y
     applyPetPosition()
     if (t < duration - tail) {
       moveRef = requestAnimationFrame(step)
@@ -806,8 +824,10 @@ function showMenu(x, y) {
   } else {
     renderMainMenu()
   }
-  menuEl.style.left = Math.min(x, window.innerWidth - 180) + 'px'
-  menuEl.style.top = Math.min(y, window.innerHeight - 200) + 'px'
+  menuEl.style.left = Math.min(x, window.innerWidth - 220) + 'px'
+  menuEl.style.top = Math.min(y, window.innerHeight - 240) + 'px'
+  menuEl.style.maxHeight = '80vh'
+  menuEl.style.overflowY = 'auto'
   menuEl.classList.add('visible')
   window.petBridge.setIgnoreMouse(false)
 }
@@ -839,10 +859,26 @@ function renderMainMenu() {
     menuPage = 'pomodoro'
     showMenu(lastMenuPos.x, lastMenuPos.y)
   })
-  addMenuButton('选择待机动作', () => {
-    menuPage = 'actions'
-    showMenu(lastMenuPos.x, lastMenuPos.y)
+  // 选择待机动作：鼠标悬停展开，移开自动关闭。
+  const actionWrap = document.createElement('div')
+  actionWrap.style.cssText = 'position:relative'
+  const actionBtn = document.createElement('button')
+  actionBtn.textContent = '选择待机动作'
+  const actionFlyout = document.createElement('div')
+  actionFlyout.style.cssText = 'position:absolute;left:100%;top:0;background:#fff;border:1px solid #e3e5e8;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:8px;min-width:240px;max-height:60vh;overflow-y:auto;display:none;z-index:30'
+  actionBtn.addEventListener('mouseenter', () => {
+    renderActionFlyoutContent(actionFlyout)
+    actionFlyout.style.display = 'block'
   })
+  actionWrap.addEventListener('mouseleave', (e) => {
+    if (!actionFlyout.contains(e.relatedTarget)) actionFlyout.style.display = 'none'
+  })
+  actionFlyout.addEventListener('mouseleave', (e) => {
+    if (!actionWrap.contains(e.relatedTarget)) actionFlyout.style.display = 'none'
+  })
+  actionWrap.appendChild(actionBtn)
+  actionWrap.appendChild(actionFlyout)
+  menuEl.appendChild(actionWrap)
   addMenuButton(CONFIG.roastEnabled ? '关闭自动吐槽' : '开启自动吐槽', () => {
     const next = !CONFIG.roastEnabled
     CONFIG.roastEnabled = next
@@ -880,6 +916,10 @@ function renderMainMenu() {
 }
 
 function renderPomodoroSettings() {
+  addMenuButton('← 返回主菜单', () => {
+    menuPage = 'main'
+    showMenu(lastMenuPos.x, lastMenuPos.y)
+  })
   const workInput = document.createElement('input')
   workInput.type = 'number'
   workInput.min = 1
@@ -923,6 +963,10 @@ function renderPomodoroSettings() {
 
 function renderActionSettings() {
   // 空数组 = 全部动作，所以 UI 里初始化为全选。
+  addMenuButton('← 返回主菜单', () => {
+    menuPage = 'main'
+    showMenu(lastMenuPos.x, lastMenuPos.y)
+  })
   const working = CONFIG.enabledActions.length > 0 ? CONFIG.enabledActions.slice() : ACTS.slice()
   const list = document.createElement('div')
   list.style.cssText = 'max-height:50vh;overflow-y:auto;margin:4px 0'
@@ -966,6 +1010,56 @@ function renderActionSettings() {
     menuPage = 'main'
     showMenu(lastMenuPos.x, lastMenuPos.y)
   })
+}
+
+function renderActionFlyoutContent(panel) {
+  panel.innerHTML = ''
+  const working = CONFIG.enabledActions.length > 0 ? CONFIG.enabledActions.slice() : ACTS.slice()
+  const list = document.createElement('div')
+  list.style.cssText = 'max-height:45vh;overflow-y:auto;margin:2px 0'
+  ACTS.forEach((name) => {
+    const label = document.createElement('label')
+    label.style.cssText = 'display:flex;align-items:center;gap:6px;padding:2px 0;font-size:12px;cursor:pointer'
+    const checkbox = document.createElement('input')
+    checkbox.type = 'checkbox'
+    checkbox.checked = working.includes(name)
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) {
+        if (!working.includes(name)) working.push(name)
+      } else {
+        const index = working.indexOf(name)
+        if (index >= 0) working.splice(index, 1)
+      }
+    })
+    label.append(checkbox, name)
+    list.appendChild(label)
+  })
+  panel.appendChild(list)
+
+  const row = document.createElement('div')
+  row.style.cssText = 'display:flex;gap:6px;margin-top:4px'
+  const allBtn = document.createElement('button')
+  allBtn.textContent = '全部动作'
+  allBtn.addEventListener('click', () => {
+    working.length = 0
+    working.push(...ACTS)
+    for (const input of panel.querySelectorAll('input')) input.checked = true
+  })
+  const saveBtn = document.createElement('button')
+  saveBtn.textContent = '保存'
+  saveBtn.addEventListener('click', () => {
+    const next = working.length === ACTS.length ? [] : working.slice()
+    CONFIG.enabledActions = next
+    window.petBridge.saveConfig({ enabledActions: next })
+    panel.style.display = 'none'
+  })
+  const closeBtn = document.createElement('button')
+  closeBtn.textContent = '关闭'
+  closeBtn.addEventListener('click', () => {
+    panel.style.display = 'none'
+  })
+  row.append(allBtn, saveBtn, closeBtn)
+  panel.appendChild(row)
 }
 
 document.addEventListener('click', (e) => {
