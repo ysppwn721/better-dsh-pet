@@ -142,13 +142,23 @@ const bubbleDetail = document.getElementById('bubble-detail')
 const menuEl = document.getElementById('menu')
 
 // ---------- 基础尺寸 ----------
-const size = (CONFIG.petSize || 462) * CONFIG.scale
-const halfW = size / 2
-const halfH = size * 9 / 16 / 2
-const bottomPad = (size * 9 / 16 * (CANVAS_H - FEET_Y)) / CANVAS_H
-stageEl.style.width = size + 'px'
-stageEl.style.height = (size * 9 / 16) + 'px'
-stageEl.style.transform = `translateY(${bottomPad}px)`
+let size = (CONFIG.petSize || 460) * CONFIG.scale
+let halfW = size / 2
+let halfH = size * 9 / 16 / 2
+let bottomPad = (size * 9 / 16 * (CANVAS_H - FEET_Y)) / CANVAS_H
+function applySize() {
+  size = (CONFIG.petSize || 460) * CONFIG.scale
+  halfW = size / 2
+  halfH = size * 9 / 16 / 2
+  bottomPad = (size * 9 / 16 * (CANVAS_H - FEET_Y)) / CANVAS_H
+  stageEl.style.width = size + 'px'
+  stageEl.style.height = (size * 9 / 16) + 'px'
+  stageEl.style.transform = `translateY(${bottomPad}px)`
+  // 尺寸变化后把位置夹回屏幕内。
+  petPos.x = Math.min(Math.max(petPos.x, -(HIT_BOX.x0 / 640 * size)), window.innerWidth - (HIT_BOX.x1 / 640 * size))
+  petPos.y = Math.min(Math.max(petPos.y, 0), window.innerHeight - size * 9 / 16)
+  applyPetPosition()
+}
 hitEl.style.left = (HIT_BOX.x0 / 640 * 100) + '%'
 hitEl.style.top = (HIT_BOX.y0 / 360 * 100) + '%'
 hitEl.style.width = ((HIT_BOX.x1 - HIT_BOX.x0) / 640 * 100) + '%'
@@ -170,6 +180,7 @@ function applyPetPosition() {
   rootEl.style.transform = 'none'
 }
 applyPetPosition()
+applySize()
 
 // ---------- 状态 ----------
 let front = 0 // 0 = A, 1 = B
@@ -1202,6 +1213,8 @@ function applyStatus(incoming) {
     CONFIG.petSize = Number(incoming.config.petSize) || CONFIG.petSize
     CONFIG.moveChance = Number(incoming.config.moveChance) ?? CONFIG.moveChance
     CONFIG.actionDelayMs = Number(incoming.config.actionDelayMs) ?? CONFIG.actionDelayMs
+    CONFIG.scale = Number(incoming.config.scale) || CONFIG.scale
+    applySize()
   }
 
   if (incoming.tokenUsage) {
