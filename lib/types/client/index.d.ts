@@ -37,6 +37,8 @@ export interface Config {
     enabledActions?: string[];
     actionOrder?: string[];
     petSize?: number;
+    moveChance?: number;
+    actionDelayMs?: number;
 }
 
 /**

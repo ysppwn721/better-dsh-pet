@@ -21,7 +21,9 @@ const CONFIG = {
   walkEnabled: params.get('walkEnabled') !== '0',
   enabledActions: [],
   actionOrder: [],
-  petSize: Number(params.get('petSize') || '462'),
+  petSize: Number(params.get('petSize') || '460'),
+  moveChance: Number(params.get('moveChance') || '20'),
+  actionDelayMs: Number(params.get('actionDelayMs') || '0'),
 }
 
 // ---------- 资源根 ----------
@@ -205,6 +207,7 @@ let moveRef = null
 let moveToken = 0
 let movePlan = null
 let actionOrderIndex = 0
+let idleDelayTimer = null
 
 // ---------- 工具 ----------
 const randomBetween = (min, max) => Math.floor(min + Math.random() * (max - min))
@@ -264,6 +267,7 @@ function switchTo(next, { once = true, loop = false } = {}) {
 
 // ---------- 播放控制 ----------
 function playIdle() {
+  clearIdleDelay()
   stopMove()
   currentMode = 'idle'
   // 自定义动作池：设置了 enabledActions 时只从这些动作里选。
@@ -290,9 +294,9 @@ function playIdle() {
     } else if (roll < 0.8) {
       next = pick(usableActions, anim)
     } else {
-      // 20% 概率尝试走动（可关闭）；空间不够或关闭时退回随机动作。
+      // 按“移动频繁度”概率尝试走动（可关闭）；空间不够或关闭时退回随机动作。
       const moveCandidate = pick(MOVES, anim)
-      if (CONFIG.walkEnabled && tryMove(moveCandidate)) {
+      if (CONFIG.walkEnabled && Math.random() * 100 < CONFIG.moveChance && tryMove(moveCandidate)) {
         next = moveCandidate
         isMove = true
       } else {
@@ -423,6 +427,25 @@ function stopMove() {
   }
 }
 
+function clearIdleDelay() {
+  if (idleDelayTimer) {
+    clearTimeout(idleDelayTimer)
+    idleDelayTimer = null
+  }
+}
+
+function scheduleNextIdle() {
+  clearIdleDelay()
+  if (CONFIG.actionDelayMs > 0) {
+    idleDelayTimer = setTimeout(() => {
+      idleDelayTimer = null
+      playIdle()
+    }, CONFIG.actionDelayMs)
+  } else {
+    playIdle()
+  }
+}
+
 function handleEnded() {
   if (dragging || dragState.active) return
   if (overlay && overlay.state) {
@@ -439,7 +462,7 @@ function handleEnded() {
   }
   if (currentMode === 'move') {
     stopMove()
-    playIdle()
+    scheduleNextIdle()
     return
   }
   if (currentMode === 'state') {
@@ -448,13 +471,13 @@ function handleEnded() {
       playState(state)
       return
     }
-    playIdle()
+    scheduleNextIdle()
     return
   }
   if (anim === TURN) {
     facing = facing === 'left' ? 'right' : 'left'
   }
-  playIdle()
+  scheduleNextIdle()
 }
 
 function applyResume() {
@@ -821,6 +844,8 @@ function showMenu(x, y) {
     renderPomodoroSettings()
   } else if (menuPage === 'actions') {
     renderActionSettings()
+  } else if (menuPage === 'appearance') {
+    renderAppearanceSettings()
   } else {
     renderMainMenu()
   }
@@ -866,13 +891,17 @@ function renderMainMenu() {
     menuPage = 'pomodoro'
     showMenu(lastMenuPos.x, lastMenuPos.y)
   })
+  addMenuButton('行为设置', () => {
+    menuPage = 'appearance'
+    showMenu(lastMenuPos.x, lastMenuPos.y)
+  })
   // 选择待机动作：鼠标悬停展开，移开自动关闭。
   const actionWrap = document.createElement('div')
   actionWrap.style.cssText = 'position:static'
   const actionBtn = document.createElement('button')
   actionBtn.textContent = '选择待机动作'
   const actionFlyout = document.createElement('div')
-  actionFlyout.style.cssText = 'margin-top:4px;background:#fff;border:1px solid #e3e5e8;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:8px;max-height:50vh;overflow-y:auto;display:none'
+  actionFlyout.style.cssText = 'margin-top:4px;background:#fff;border:1px solid #e3e5e8;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:8px;max-height:70vh;overflow-y:auto;display:none'
   actionBtn.addEventListener('mouseenter', () => {
     renderActionFlyoutContent(actionFlyout)
     actionFlyout.style.display = 'block'
@@ -968,6 +997,84 @@ function renderPomodoroSettings() {
   })
 }
 
+function renderAppearanceSettings() {
+  addMenuButton('← 返回主菜单', () => {
+    menuPage = 'main'
+    showMenu(lastMenuPos.x, lastMenuPos.y)
+  })
+
+  const sizeInput = document.createElement('input')
+  sizeInput.type = 'number'
+  sizeInput.min = 100
+  sizeInput.max = 1000
+  sizeInput.step = 10
+  sizeInput.value = String(CONFIG.petSize)
+  sizeInput.style.width = '80px'
+
+  const moveInput = document.createElement('input')
+  moveInput.type = 'range'
+  moveInput.min = 0
+  moveInput.max = 100
+  moveInput.step = 1
+  moveInput.value = String(CONFIG.moveChance)
+  moveInput.style.width = '120px'
+
+  const delayInput = document.createElement('input')
+  delayInput.type = 'range'
+  delayInput.min = 0
+  delayInput.max = 5000
+  delayInput.step = 100
+  delayInput.value = String(CONFIG.actionDelayMs)
+  delayInput.style.width = '120px'
+
+  const row = (label, input, hint) => {
+    const div = document.createElement('div')
+    div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;font-size:12px'
+    const left = document.createElement('span')
+    left.textContent = label
+    div.append(left, input)
+    if (hint) {
+      const small = document.createElement('small')
+      small.textContent = hint
+      small.style.cssText = 'display:block;opacity:.65;font-size:11px'
+      div.appendChild(small)
+    }
+    return div
+  }
+
+  menuEl.append(
+    row('宠物宽度(px)', sizeInput, '重启后生效'),
+    row(`移动频繁度 ${moveInput.value}%`, moveInput),
+    row(`动作切换间隔 ${delayInput.value}ms`, delayInput),
+  )
+  moveInput.addEventListener('input', () => {
+    const label = moveInput.parentElement
+    label.firstChild.textContent = `移动频繁度 ${moveInput.value}%`
+  })
+  delayInput.addEventListener('input', () => {
+    const label = delayInput.parentElement
+    label.firstChild.textContent = `动作切换间隔 ${delayInput.value}ms`
+  })
+
+  addMenuButton('保存', () => {
+    CONFIG.petSize = Math.min(1000, Math.max(100, Math.round(Number(sizeInput.value) / 10) * 10 || 460))
+    CONFIG.moveChance = Math.min(100, Math.max(0, Number(moveInput.value) || 0))
+    CONFIG.actionDelayMs = Math.min(5000, Math.max(0, Number(delayInput.value) || 0))
+    window.petBridge.saveConfig({
+      petSize: CONFIG.petSize,
+      moveChance: CONFIG.moveChance,
+      actionDelayMs: CONFIG.actionDelayMs,
+    })
+    menuPage = 'main'
+    menuEl.classList.remove('visible')
+    updateClickThrough()
+  })
+  addMenuButton('返回', () => {
+    menuPage = 'main'
+    showMenu(lastMenuPos.x, lastMenuPos.y)
+  })
+}
+
 function renderActionSettings() {
   // 空数组 = 全部动作，所以 UI 里初始化为全选。
   addMenuButton('← 返回主菜单', () => {
@@ -976,7 +1083,7 @@ function renderActionSettings() {
   })
   const working = CONFIG.enabledActions.length > 0 ? CONFIG.enabledActions.slice() : ACTS.slice()
   const list = document.createElement('div')
-  list.style.cssText = 'max-height:50vh;overflow-y:auto;margin:4px 0'
+  list.style.cssText = 'max-height:70vh;overflow-y:auto;margin:4px 0'
 
   const addToggle = (name) => {
     const label = document.createElement('label')
@@ -1023,7 +1130,7 @@ function renderActionFlyoutContent(panel) {
   panel.innerHTML = ''
   const working = CONFIG.enabledActions.length > 0 ? CONFIG.enabledActions.slice() : ACTS.slice()
   const list = document.createElement('div')
-  list.style.cssText = 'max-height:45vh;overflow-y:auto;margin:2px 0'
+  list.style.cssText = 'max-height:60vh;overflow-y:auto;margin:2px 0'
   ACTS.forEach((name) => {
     const label = document.createElement('label')
     label.style.cssText = 'display:flex;align-items:center;gap:6px;padding:2px 0;font-size:12px;cursor:pointer'
@@ -1093,6 +1200,8 @@ function applyStatus(incoming) {
     CONFIG.enabledActions = Array.isArray(incoming.config.enabledActions) ? incoming.config.enabledActions : []
     CONFIG.actionOrder = Array.isArray(incoming.config.actionOrder) ? incoming.config.actionOrder : []
     CONFIG.petSize = Number(incoming.config.petSize) || CONFIG.petSize
+    CONFIG.moveChance = Number(incoming.config.moveChance) ?? CONFIG.moveChance
+    CONFIG.actionDelayMs = Number(incoming.config.actionDelayMs) ?? CONFIG.actionDelayMs
   }
 
   if (incoming.tokenUsage) {
