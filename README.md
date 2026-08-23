@@ -1,103 +1,157 @@
-# better-dsh-pet 🐾
+<div align="center">
 
-<p align="center">
-  <a href="https://www.npmjs.com/package/better-dsh-pet"><img alt="npm version" src="https://img.shields.io/npm/v/better-dsh-pet?label=npm&color=blue"></a>
-  <a href="https://www.npmjs.com/package/better-dsh-pet"><img alt="npm monthly downloads" src="https://img.shields.io/npm/dm/better-dsh-pet?label=%E6%9C%88%E4%B8%8B%E8%BD%BD&color=brightgreen"></a>
-  <a href="https://www.npmjs.com/package/better-dsh-pet"><img alt="total downloads" src="https://img.shields.io/npm/dt/better-dsh-pet?label=%E6%80%BB%E4%B8%8B%E8%BD%BD&color=success"></a>
-  <a href="https://github.com/ysppwn721/better-dsh-pet"><img alt="stars" src="https://img.shields.io/github/stars/ysppwn721/better-dsh-pet?style=social"></a>
-  <a href="https://github.com/ysppwn721/better-dsh-pet/blob/master/LICENSE"><img alt="license" src="https://img.shields.io/github/license/ysppwn721/better-dsh-pet?color=orange"></a>
-  <a href="https://awesome-dsh-plugin.com"><img alt="awesome dsh plugin" src="https://awesome-dsh-plugin.com/badge.svg"></a>
-  <img alt="platform" src="https://img.shields.io/badge/platform-DeepSeek%20Harness%20Web-8A2BE2">
-  <img alt="assets" src="https://img.shields.io/badge/assets-51%20animations-ff69b4">
-</p>
+# 🐋 better-dsh-pet
 
-> A desktop-native pet bubble driven by [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) session events.
-> 一只住在 Windows 桌面上的透明置顶大肥鱼：由 DSH 真实工作状态驱动，思考/工作/等待/完成/出错时自动切换动画并显示状态气泡。
+**一只住在 Windows 桌面上的大肥鱼，由 DeepSeek Harness 真实工作状态驱动。**
 
-> 📌 **二创声明**：本项目是基于 [PC2005-cloud/dsh-pet](https://github.com/PC2005-cloud/dsh-pet) 的二创修改版，感谢原作者的桌宠动画与设计。
+透明 · 置顶 · 会吐槽 · 会番茄钟 · 会喂食 · 会陪你干活
+
+<br/>
+
+[![npm version](https://img.shields.io/npm/v/better-dsh-pet?label=npm&color=blue)](https://www.npmjs.com/package/better-dsh-pet)
+[![npm downloads](https://img.shields.io/npm/dm/better-dsh-pet?label=downloads&color=brightgreen)](https://www.npmjs.com/package/better-dsh-pet)
+[![GitHub stars](https://img.shields.io/github/stars/ysppwn721/better-dsh-pet?style=social)](https://github.com/ysppwn721/better-dsh-pet)
+[![License](https://img.shields.io/github/license/ysppwn721/better-dsh-pet?color=orange)](LICENSE)
+![platform](https://img.shields.io/badge/platform-Windows%20%7C%20DeepSeek%20Harness-8A2BE2)
+![assets](https://img.shields.io/badge/assets-91%20animations-ff69b4)
+
+</div>
 
 ---
 
-## 🚀 快速开始（安装插件）
+## 🎬 视频推广
 
-```sh
+> 📹 演示视频占位：把视频链接放到这里，例如 B站 / YouTube。
+>
+> 示例：
+> ```md
+> [▶️ 点击观看 better-dsh-pet 演示视频](https://www.bilibili.com/video/你的视频ID)
+> ```
+
+---
+
+## ✨ 它是什么？
+
+`better-dsh-pet` 是一个 **DSH 桌面宠物插件**：
+
+- 不再只是网页里的小挂件，而是**独立透明置顶窗口**
+- 能感知 DSH 的真实工作状态：思考 / 工作 / 等待 / 完成 / 出错
+- 状态变化时自动切换动画和气泡文案
+- 还内置了余额显示、番茄钟、喂食、吐槽、自定义动作等玩法
+
+## 🚀 一行命令安装
+
+```bash
 dsh plugin --profile web add better-dsh-pet
 ```
 
-重启 `dsh web`，桌面会出现独立置顶气泡窗口——51 个透明动画开箱即用。网页内不再显示浮动大肥鱼；设置入口在 `设置 → 插件 → 插件配置 → 大肥鱼桌面伴侣`。
+重启：
 
-> 💡 想自己造一只专属宠物？克隆 [ysppwn721/better-dsh-pet](https://github.com/ysppwn721/better-dsh-pet) 仓库，用内置素材链（AI 提示词 → 绿幕视频 → 透明动画，素材由豆包生成）从零生成，全流程可复现。
-
-## ✨ 功能特性
-
-- **DSH 状态联动**：监听 DSH 会话事件，按思考 / 工作 / 等待 / 完成 / 错误切换动画和气泡文案
-- **独立桌面气泡**：不再占用网页界面；透明、无边框、始终置顶的 Electron 窗口
-- **51 个手绘风透明动画**：待机呼吸、打瞌睡、玩魔方、哼歌、炸毛、吐泡泡、玩水枪、小提琴演奏、蓝鲸现世、吃白饭、照镜子、三支舞、写代码、四季动作（放风筝、堆雪人、吃冰淇淋、放烟花……）全部无缝衔接
-- **永不停止的动画链**：空闲时每段动画播完立即按概率选下一个（30% 待机 / 10% 转向 / 40% 动作 / 20% 移动）
-- **点击 / 拖拽**：点击有随机回应动画（开心 / 害羞 / 傲娇），可拖到任意位置
-- **喂食互动**：右键菜单可喂食，播放吃饭动画并显示感谢气泡
-- **余额 / 进度汇报**：气泡中显示当前任务进度和 DeepSeek 账户余额
-- **完成反馈**：任务完成时播放提示音并抖动宠物
-- **对话吐槽**：根据本次对话生成俏皮吐槽（会消耗 Token，可开关；也可右键手动触发）
-- **番茄钟**：右键菜单可开始 25 分钟专注 / 5 分钟短休息，气泡显示倒计时，结束时提示音 + 抖动
-- **左右朝向**：所有动画 CSS 镜像，人物可朝左 / 朝右
-- **落地对齐**：动画统一脚底线，宠物始终站在"地面"上
-- **流畅切换**：双缓冲 video 交叉淡入，切换零空白帧
-- **无障碍友好**：支持 `prefers-reduced-motion`
-
-## ⚙️ 配置
-
-| 配置项 | 说明 | 当前状态 |
-|---|---|---|
-| `enabled` | 是否启用桌面大肥鱼 | 默认 true，可在 DSH 设置页切换 |
-| `scale` | 角色大小（70%～140%） | 默认 100%，设置页实时生效 |
-| `bubbleScale` | 气泡大小（80%～120%） | 默认 100%，设置页实时生效 |
-| `activityLevel` | 空闲微动作频率：quiet / normal / lively | 默认 normal |
-| `reducedMotion` | 减少动态效果 | 默认关闭 |
-| `bubbleMode` | 气泡显示：always / hidden / custom | 默认 always |
-| `bubbleStates` | 自定义模式下显示气泡的状态 | 默认 SUCCESS / ERROR / WAITING |
-| `includeSubagents` | 是否让子 Agent 参与状态选择 | 默认关闭 |
-| `helper.electronPath` | 自定义 Electron 可执行文件路径 | 缺省自动探测 `DSH_PET_ELECTRON_PATH` / `require('electron')` / 本地 dsh-desktop-electron |
-
-## 🗑️ 卸载
-
-```sh
-dsh plugin --profile web remove better-dsh-pet
+```bash
+dsh web
 ```
 
-## 🎬 效果预览
+然后桌面上就会出现大肥鱼啦～
+
+---
+
+## 🎯 功能亮点
+
+| 功能 | 说明 |
+|---|---|
+| 🧠 **DSH 状态联动** | 思考、工作、等待、完成、出错自动切换动画和气泡 |
+| 🖥️ **独立桌面气泡** | 透明、无边框、始终置顶，不占用网页界面 |
+| 🎞️ **91 个透明动画** | 待机、打瞌睡、玩魔方、写代码、吃火锅、放烟花、拆礼物…… |
+| 🚶 **屏幕漫游** | 可开关；支持移动频率调节 |
+| 🖱️ **点击 / 拖拽** | 点击有回应，可拖到任意位置 |
+| 🍚 **喂食互动** | 右键喂食，播放吃饭动画并显示感谢气泡 |
+| 💰 **余额显示** | 气泡中显示 DeepSeek 账户余额 |
+| 🍅 **番茄钟** | 自定义时长，倒计时气泡，结束提示音 + 抖动 |
+| 💬 **对话吐槽** | 根据本次对话生成俏皮吐槽（可开关，会消耗 Token） |
+| 🎛️ **自定义动作** | 右键勾选要播放的动作，支持自定义播放顺序 |
+| ⚙️ **行为设置** | 大小、移动频率、动作切换间隔、行走开关 |
+
+---
+
+## 📸 效果预览
 
 > 动画为透明背景；GIF 预览中透明部分显示为页面底色，实际播放为透明。
 
-<p>
-  <img src="assets/preview/daiji-huxi-xiuxian.gif" width="160" alt="待机呼吸休闲" title="待机呼吸休闲">
-  <img src="assets/preview/dongzhangxiwang.gif" width="160" alt="东张西望" title="东张西望">
-  <img src="assets/preview/yuandi-piaofu-tabu.gif" width="160" alt="原地漂浮踏步" title="原地漂浮踏步">
-  <img src="assets/preview/yuandi-xiaoqi-chenmian.gif" width="160" alt="原地小憩沉眠" title="原地小憩沉眠">
-  <img src="assets/preview/dianji-huiying-kaixin-yuedong.gif" width="160" alt="点击回应 - 开心跃动" title="点击回应 - 开心跃动">
-  <img src="assets/preview/beishubiao-tuozhuai-xuankong-fankui.gif" width="160" alt="被鼠标拖拽悬空反馈" title="被鼠标拖拽悬空反馈">
+<p align="center">
+  <img src="assets/preview/daiji-huxi-xiuxian.gif" width="150" alt="待机呼吸休闲" title="待机呼吸休闲">
+  <img src="assets/preview/dongzhangxiwang.gif" width="150" alt="东张西望" title="东张西望">
+  <img src="assets/preview/yuandi-piaofu-tabu.gif" width="150" alt="原地漂浮踏步" title="原地漂浮踏步">
+  <img src="assets/preview/yuandi-xiaoqi-chenmian.gif" width="150" alt="原地小憩沉眠" title="原地小憩沉眠">
+  <img src="assets/preview/dianji-huiying-kaixin-yuedong.gif" width="150" alt="点击回应-开心跃动" title="点击回应-开心跃动">
+  <img src="assets/preview/beishubiao-tuozhuai-xuankong-fankui.gif" width="150" alt="被鼠标拖拽悬空反馈" title="被鼠标拖拽悬空反馈">
 </p>
 
-全部 51 个动画见仓库：`assets/thumb/`。
+<p align="center">
+  <img src="assets/preview/chi-baifan.gif" width="150" alt="吃白饭" title="吃白饭">
+  <img src="assets/preview/chi-token.gif" width="150" alt="吃Token" title="吃Token">
+  <img src="assets/preview/duixueren.gif" width="150" alt="堆雪人" title="堆雪人">
+  <img src="assets/preview/fang-fengzheng.gif" width="150" alt="放风筝" title="放风筝">
+  <img src="assets/preview/xie-daima.gif" width="150" alt="写代码" title="写代码">
+  <img src="assets/preview/lanjing-xianshi.gif" width="150" alt="蓝鲸现世" title="蓝鲸现世">
+</p>
 
-## 📚 完整项目（不止是插件）
+全部 **91 个透明动画** 见仓库：`assets/thumb/`
 
-这是**完整的三件套项目**，任何人 clone 仓库都可以从零生成自己的桌面宠物：
+---
 
+## ⚙️ 配置
+
+| 配置项 | 说明 | 默认 |
+|---|---|---|
+| `enabled` | 是否启用大肥鱼 | `true` |
+| `petSize` | 宠物宽度（px） | `460` |
+| `scale` | 角色大小（70%～140%） | `100%` |
+| `bubbleScale` | 气泡大小（80%～120%） | `100%` |
+| `walkEnabled` | 是否允许走动 | `true` |
+| `moveChance` | 移动频繁度（%） | `20` |
+| `actionDelayMs` | 动作切换间隔（ms） | `0` |
+| `enabledActions` | 自定义待机动作 | `[]`（全部） |
+| `actionOrder` | 自定义播放顺序 | `[]`（随机） |
+| `bubbleMode` | 气泡显示模式 | `always` |
+| `roastEnabled` | 自动吐槽（耗 Token） | `false` |
+
+---
+
+## 🛠️ 开发 / 构建
+
+```bash
+# 本地安装
+dsh plugin --profile web add "D:\dsh-pet"
+
+# 打包
+npm pack
 ```
-① 提示词（配方）    →  ② 素材生成链（引擎）  →  ③ 插件（成品）
-AI 生成动画的配方     源视频 → 透明动画的管线    运行在 DSH 里的宠物
-```
 
-- 仓库：[ysppwn721/better-dsh-pet](https://github.com/ysppwn721/better-dsh-pet)
-- 设计与实现文档：[DESIGN.md](https://github.com/ysppwn721/better-dsh-pet/blob/master/DESIGN.md)
+---
 
-## 🔎 发现更多 DSH 插件
+## 📌 二创声明
+
+本项目是基于 [PC2005-cloud/dsh-pet](https://github.com/PC2005-cloud/dsh-pet) 的**二创修改版**，感谢原作者的桌宠动画与设计。
+
+---
+
+## 🔎 相关链接
 
 - 社区插件目录：[awesome-dsh-plugin.com](https://awesome-dsh-plugin.com)
 - DSH 官方仓库：[deepseek-ai/DeepSeek-Harness](https://github.com/deepseek-ai/deepseek-harness)
+- 上游原版：[PC2005-cloud/dsh-pet](https://github.com/PC2005-cloud/dsh-pet)
+
+---
 
 ## 📄 许可
 
 - 代码：MIT
-- 素材（动画/提示词）：见仓库说明
+- 素材（动画/提示词）：见仓库说明，禁止商用
+
+---
+
+<div align="center">
+
+**如果这个大肥鱼让你开心，给个 ⭐ 支持一下吧～**
+
+</div>
