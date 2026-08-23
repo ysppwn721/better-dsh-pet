@@ -778,6 +778,8 @@ function showMenu(x, y) {
   menuEl.innerHTML = ''
   if (menuPage === 'pomodoro') {
     renderPomodoroSettings()
+  } else if (menuPage === 'actions') {
+    renderActionSettings()
   } else {
     renderMainMenu()
   }
@@ -812,6 +814,10 @@ function renderMainMenu() {
   }
   addMenuButton('番茄钟设置', () => {
     menuPage = 'pomodoro'
+    showMenu(lastMenuPos.x, lastMenuPos.y)
+  })
+  addMenuButton('选择待机动作', () => {
+    menuPage = 'actions'
     showMenu(lastMenuPos.x, lastMenuPos.y)
   })
   addMenuButton(CONFIG.roastEnabled ? '关闭自动吐槽' : '开启自动吐槽', () => {
@@ -885,6 +891,53 @@ function renderPomodoroSettings() {
     menuEl.classList.remove('visible')
     updateClickThrough()
     updateBubble()
+  })
+  addMenuButton('返回', () => {
+    menuPage = 'main'
+    showMenu(lastMenuPos.x, lastMenuPos.y)
+  })
+}
+
+function renderActionSettings() {
+  // 空数组 = 全部动作，所以 UI 里初始化为全选。
+  const working = CONFIG.enabledActions.length > 0 ? CONFIG.enabledActions.slice() : ACTS.slice()
+  const list = document.createElement('div')
+  list.style.cssText = 'max-height:50vh;overflow-y:auto;margin:4px 0'
+
+  const addToggle = (name) => {
+    const label = document.createElement('label')
+    label.style.cssText = 'display:flex;align-items:center;gap:6px;padding:2px 0;font-size:12px;cursor:pointer'
+    const checkbox = document.createElement('input')
+    checkbox.type = 'checkbox'
+    checkbox.checked = working.includes(name)
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) {
+        if (!working.includes(name)) working.push(name)
+      } else {
+        const index = working.indexOf(name)
+        if (index >= 0) working.splice(index, 1)
+      }
+    })
+    label.append(checkbox, name)
+    list.appendChild(label)
+  }
+
+  ACTS.forEach(addToggle)
+  menuEl.append(list)
+
+  addMenuButton('全部动作', () => {
+    working.length = 0
+    working.push(...ACTS)
+    for (const input of list.querySelectorAll('input')) input.checked = true
+  })
+  addMenuButton('保存', () => {
+    // 全选时保存空数组 = 全部动作；否则保存勾选子集。
+    const next = working.length === ACTS.length ? [] : working.slice()
+    CONFIG.enabledActions = next
+    window.petBridge.saveConfig({ enabledActions: next })
+    menuPage = 'main'
+    menuEl.classList.remove('visible')
+    updateClickThrough()
   })
   addMenuButton('返回', () => {
     menuPage = 'main'
