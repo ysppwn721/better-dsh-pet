@@ -861,11 +861,11 @@ function renderMainMenu() {
   })
   // 选择待机动作：鼠标悬停展开，移开自动关闭。
   const actionWrap = document.createElement('div')
-  actionWrap.style.cssText = 'position:relative'
+  actionWrap.style.cssText = 'position:static'
   const actionBtn = document.createElement('button')
   actionBtn.textContent = '选择待机动作'
   const actionFlyout = document.createElement('div')
-  actionFlyout.style.cssText = 'position:absolute;left:100%;top:0;background:#fff;border:1px solid #e3e5e8;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:8px;min-width:240px;max-height:60vh;overflow-y:auto;display:none;z-index:30'
+  actionFlyout.style.cssText = 'margin-top:4px;background:#fff;border:1px solid #e3e5e8;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:8px;max-height:50vh;overflow-y:auto;display:none'
   actionBtn.addEventListener('mouseenter', () => {
     renderActionFlyoutContent(actionFlyout)
     actionFlyout.style.display = 'block'
