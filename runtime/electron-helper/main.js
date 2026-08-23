@@ -64,6 +64,7 @@ function createWindow() {
     height,
     x: area.x,
     y: area.y,
+    show: false,
     useContentSize: true,
     transparent: true,
     frame: false,
@@ -76,7 +77,12 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      paintWhenInitiallyHidden: false,
     },
+  })
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show()
   })
 
   mainWindow.setAlwaysOnTop(true, 'screen-saver')
