@@ -702,6 +702,7 @@ function updateBubble() {
       || (CONFIG.bubbleMode === 'custom' && tasks.length >= 2 && tasks.some((t) => CONFIG.bubbleStates.includes(t.state)))
   if (CONFIG.bubbleMode === 'hidden' || !shouldShow) {
     bubbleEl.classList.remove('visible')
+    bubbleEl.style.pointerEvents = 'none'
     return
   }
   let title = ''
@@ -736,6 +737,7 @@ function updateBubble() {
   bubbleTitle.textContent = title
   bubbleDetail.textContent = detail
   bubbleEl.style.transform = `translateX(-50%) scale(${CONFIG.bubbleScale})`
+  bubbleEl.style.pointerEvents = 'auto'
   bubbleEl.classList.add('visible')
 }
 
@@ -745,8 +747,14 @@ const DRAG_THRESHOLD = 5
 // 让透明窗口只在宠物/菜单区域接收鼠标，其余区域点击穿透到下层应用。
 function updateClickThrough() {
   const rect = hitEl.getBoundingClientRect()
-  const inside = lastMouse.x >= rect.left && lastMouse.x <= rect.right
+  let inside = lastMouse.x >= rect.left && lastMouse.x <= rect.right
     && lastMouse.y >= rect.top && lastMouse.y <= rect.bottom
+  // 气泡可见时也允许点击（用于点击刷新余额）。
+  if (bubbleEl.classList.contains('visible')) {
+    const b = bubbleEl.getBoundingClientRect()
+    inside = inside || (lastMouse.x >= b.left && lastMouse.x <= b.right
+      && lastMouse.y >= b.top && lastMouse.y <= b.bottom)
+  }
   const menuVisible = menuEl.classList.contains('visible')
   const ignore = !inside && !dragging && !dragState.active && !menuVisible
   window.petBridge.setIgnoreMouse(ignore)
@@ -837,6 +845,13 @@ hitEl.addEventListener('click', (e) => {
 hitEl.addEventListener('contextmenu', (e) => {
   e.preventDefault()
   showMenu(e.clientX, e.clientY)
+})
+
+// 点击余额气泡可手动刷新余额。
+bubbleEl.addEventListener('click', (e) => {
+  e.stopPropagation()
+  window.petBridge.refreshBalance()
+  showManualBubble('余额刷新中~', '', 1500)
 })
 
 function addMenuButton(label, onClick) {

@@ -178,6 +178,16 @@ app.whenReady().then(() => {
       console.error('[better-dsh-pet-helper] request roast error:', error)
     }
   })
+  ipcMain.on('pet:refresh-balance', async () => {
+    const statusUrl = process.env.DSH_PET_STATUS_URL
+    if (!statusUrl) return
+    try {
+      const refreshUrl = statusUrl.replace(/\/plugins\/better-dsh-pet\/status$/, '/plugins/better-dsh-pet/refresh-balance')
+      await fetch(refreshUrl, { method: 'POST', cache: 'no-store' })
+    } catch (error) {
+      console.error('[better-dsh-pet-helper] refresh balance error:', error)
+    }
+  })
   ipcMain.on('pet:move-by', () => {
     // 已改为全屏画布内移动宠物 DOM，不再移动窗口。
   })

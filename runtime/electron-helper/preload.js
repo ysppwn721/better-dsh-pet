@@ -36,4 +36,7 @@ contextBridge.exposeInMainWorld('petBridge', {
   requestRoast() {
     ipcRenderer.send('pet:request-roast')
   },
+  refreshBalance() {
+    ipcRenderer.send('pet:refresh-balance')
+  },
 })
