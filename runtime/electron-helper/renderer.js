@@ -18,6 +18,8 @@ const CONFIG = {
   workMinutes: Number(params.get('workMinutes') || '25'),
   breakMinutes: Number(params.get('breakMinutes') || '5'),
   roastEnabled: params.get('roastEnabled') === '1',
+  walkEnabled: params.get('walkEnabled') !== '0',
+  enabledActions: [],
 }
 
 // ---------- 资源根 ----------
@@ -251,6 +253,11 @@ function switchTo(next, { once = true, loop = false } = {}) {
 function playIdle() {
   stopMove()
   currentMode = 'idle'
+  // 自定义动作池：设置了 enabledActions 时只从这些动作里选。
+  const actionPool = CONFIG.enabledActions.length > 0
+    ? ACTS.filter((name) => CONFIG.enabledActions.includes(name))
+    : ACTS
+  const usableActions = actionPool.length > 0 ? actionPool : ACTS
   const roll = Math.random()
   let next = IDLE
   let isMove = false
@@ -259,14 +266,14 @@ function playIdle() {
   } else if (roll < 0.4) {
     next = TURN
   } else if (roll < 0.8) {
-    next = pick(ACTS, anim)
+    next = pick(usableActions, anim)
   } else {
-    // 20% 概率尝试走动；空间不够时退回随机动作。
-    if (tryMove()) {
+    // 20% 概率尝试走动（可关闭）；空间不够或关闭时退回随机动作。
+    if (CONFIG.walkEnabled && tryMove()) {
       next = pick(MOVES, anim)
       isMove = true
     } else {
-      next = pick(ACTS, anim)
+      next = pick(usableActions, anim)
     }
   }
   anim = next
@@ -814,6 +821,13 @@ function renderMainMenu() {
     menuEl.classList.remove('visible')
     updateClickThrough()
   })
+  addMenuButton(CONFIG.walkEnabled ? '关闭行走' : '开启行走', () => {
+    const next = !CONFIG.walkEnabled
+    CONFIG.walkEnabled = next
+    window.petBridge.saveConfig({ walkEnabled: next })
+    menuEl.classList.remove('visible')
+    updateClickThrough()
+  })
   addMenuButton('让大肥鱼吐槽一下', () => {
     menuEl.classList.remove('visible')
     updateClickThrough()
@@ -898,6 +912,8 @@ function applyStatus(incoming) {
     CONFIG.workMinutes = Number(incoming.config.workMinutes) || CONFIG.workMinutes
     CONFIG.breakMinutes = Number(incoming.config.breakMinutes) || CONFIG.breakMinutes
     CONFIG.roastEnabled = incoming.config.roastEnabled === true
+    CONFIG.walkEnabled = incoming.config.walkEnabled !== false
+    CONFIG.enabledActions = Array.isArray(incoming.config.enabledActions) ? incoming.config.enabledActions : []
   }
 
   if (incoming.tokenUsage) {

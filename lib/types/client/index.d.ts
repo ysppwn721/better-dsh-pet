@@ -33,6 +33,8 @@ export interface Config {
     workMinutes?: number;
     breakMinutes?: number;
     roastEnabled?: boolean;
+    walkEnabled?: boolean;
+    enabledActions?: string[];
 }
 
 /**

@@ -46,6 +46,10 @@ export interface Config {
     breakMinutes?: number;
     /** 是否根据本次对话自动吐槽（会消耗 Token）。默认 false。 */
     roastEnabled?: boolean;
+    /** 待机时是否允许走动。默认 true。 */
+    walkEnabled?: boolean;
+    /** 自定义待机动作（留空=全部动作）。 */
+    enabledActions?: string[];
     /** 旧版 /pet 路由的 full 资源根目录。 */
     fullRoot?: string;
     /** Helper 进程选项。 */

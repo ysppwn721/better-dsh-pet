@@ -34,3 +34,5 @@
         workMinutes: 25           # 番茄钟工作时长（分钟）
         breakMinutes: 5           # 番茄钟休息时长（分钟）
         roastEnabled: false       # 根据本次对话自动吐槽（会消耗 Token）
+        walkEnabled: true         # 待机时是否允许走动
+        enabledActions: []        # 自定义待机动作（留空=全部动作）
