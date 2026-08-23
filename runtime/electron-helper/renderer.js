@@ -8,6 +8,7 @@
 // ---------- 配置 ----------
 const params = new URLSearchParams(location.search)
 const CONFIG = {
+  enabled: params.get('enabled') !== '0',
   scale: Number(params.get('scale') || '1'),
   bubbleScale: Number(params.get('bubbleScale') || '1'),
   activityLevel: params.get('activityLevel') || 'normal',
@@ -879,6 +880,14 @@ function renderMainMenu() {
     updateClickThrough()
     feedPet()
   })
+  if (CONFIG.enabled) {
+    addMenuButton('禁用 Better DSH Pet', () => {
+      CONFIG.enabled = false
+      window.petBridge.saveConfig({ enabled: false })
+      menuEl.classList.remove('visible')
+      updateClickThrough()
+    })
+  }
   addMenuButton(`开始番茄钟 ${CONFIG.workMinutes}分`, () => {
     menuEl.classList.remove('visible')
     updateClickThrough()
@@ -1197,6 +1206,7 @@ function applyStatus(incoming) {
   if (!incoming || typeof incoming !== 'object') return
 
   if (incoming.config) {
+    CONFIG.enabled = incoming.config.enabled !== false
     CONFIG.bubbleMode = incoming.config.bubbleMode || CONFIG.bubbleMode
     CONFIG.bubbleStates = Array.isArray(incoming.config.bubbleStates) ? incoming.config.bubbleStates : CONFIG.bubbleStates
     CONFIG.reducedMotion = incoming.config.reducedMotion === true
