@@ -302,6 +302,44 @@ dsh plugin --profile web remove better-dsh-pet
 - 现在是**实时生效**的，不需要重启
 - 如果没生效，确认保存成功后再看
 
+### Q：没有 DSH 桌面端能运行吗？
+
+可以。
+
+- 本插件**不依赖 DSH Desktop.exe**
+- 只需要 DSH 本体（`dsh web`）正常运行
+- 右键“打开 DSH 桌面版”只是可选功能，找不到桌面端也不影响桌宠本体
+
+### Q：其他电脑需要额外安装 Electron 吗？
+
+需要。
+
+- 本插件**不打包 Electron**（npm 包体积限制）
+- 桌面 Helper 依赖 Electron 运行
+- 其他电脑上可通过以下方式提供 Electron：
+  ```powershell
+  # 方式一：设置环境变量
+  $env:DSH_PET_ELECTRON_PATH = "C:\path\to\electron.exe"
+
+  # 方式二：安装 electron 到全局 npm
+  npm install -g electron
+  ```
+- 插件也会自动探测常见位置：
+  - `~/.dsh/electron/electron.exe`
+  - `%APPDATA%\npm\node_modules\electron\dist\electron.exe`
+  - `C:\Program Files\Electron\electron.exe`
+  - 当前开发机上的 dsh-desktop-electron 路径（仅本机）
+
+### Q：插件会在没有 Electron 的电脑上崩溃吗？
+
+不会导致 DSH 崩溃，但桌宠窗口无法显示，日志会提示：
+
+```text
+better-dsh-pet: cannot resolve Electron executable.
+```
+
+所以正式分发给别人前，建议在 README 或安装说明里写明需要 Electron。
+
 ---
 
 ## 🛠️ 开发 / 本地调试
