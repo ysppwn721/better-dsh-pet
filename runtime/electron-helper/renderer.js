@@ -826,8 +826,9 @@ function showMenu(x, y) {
   }
   menuEl.style.left = Math.min(x, window.innerWidth - 220) + 'px'
   menuEl.style.top = Math.min(y, window.innerHeight - 240) + 'px'
-  menuEl.style.maxHeight = '80vh'
-  menuEl.style.overflowY = 'auto'
+  // 外层菜单不滚动，动作列表等长内容由内部子面板自己滚动，避免出现双滚动条。
+  menuEl.style.maxHeight = 'none'
+  menuEl.style.overflowY = 'visible'
   menuEl.classList.add('visible')
   window.petBridge.setIgnoreMouse(false)
 }
