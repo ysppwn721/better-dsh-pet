@@ -26,6 +26,14 @@ const VERSION = process.env.DSH_PET_ELECTRON_VERSION || '43.3.0'
 const MIRROR = process.env.DSH_PET_ELECTRON_MIRROR || 'https://npmmirror.com/mirrors/electron/'
 const TARGET_DIR = resolve(HOME, 'electron')
 const EXE = join(TARGET_DIR, 'electron.exe')
+const REQUIRED_FILES = [
+  'electron.exe',
+  'icudtl.dat',
+  'resources.pak',
+  'snapshot_blob.bin',
+  'chrome_100_percent.pak',
+  'v8_context_snapshot.bin',
+]
 
 async function download(url, dest) {
   const response = await fetch(url, { redirect: 'follow' })
@@ -39,14 +47,21 @@ function extractZip(zipPath, targetDir) {
   mkdirSync(targetDir, { recursive: true })
   // Windows 自带 tar（bsdtar）可以直接解压 zip；失败时退回 PowerShell Expand-Archive。
   const tar = spawnSync('tar', ['-xf', zipPath, '-C', targetDir], { stdio: 'inherit' })
-  if (tar.status === 0) return
-  const ps = spawnSync('powershell', [
-    '-NoProfile',
-    '-Command',
-    `Expand-Archive -LiteralPath '${zipPath}' -DestinationPath '${targetDir}' -Force`,
-  ], { stdio: 'inherit' })
-  if (ps.status !== 0) {
-    throw new Error('failed to extract Electron zip')
+  if (tar.status !== 0) {
+    const ps = spawnSync('powershell', [
+      '-NoProfile',
+      '-Command',
+      `Expand-Archive -LiteralPath '${zipPath}' -DestinationPath '${targetDir}' -Force`,
+    ], { stdio: 'inherit' })
+    if (ps.status !== 0) {
+      throw new Error('failed to extract Electron zip')
+    }
+  }
+  // 校验关键文件是否完整；不完整说明下载/解压失败，清理后重试。
+  const missing = REQUIRED_FILES.filter((name) => !existsSync(join(targetDir, name)))
+  if (missing.length > 0) {
+    rmSync(targetDir, { recursive: true, force: true })
+    throw new Error(`Electron zip incomplete, missing: ${missing.join(', ')}`)
   }
 }
 
