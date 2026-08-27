@@ -1281,6 +1281,17 @@ async function sendChatText(content) {
   }
   chatMessages.push({ role: 'assistant', content: reply })
   window.petBridge.speak(reply)
+  // 连续对话：回复播完后自动开始听下一句
+  if (CONFIG.voiceAutoRecord !== false && CONFIG.voiceEnabled !== false && chatPanel.classList.contains('visible') && !senseRecording) {
+    setTimeout(async () => {
+      try {
+        await startSenseRecording()
+        if (chatAppendMsg) chatAppendMsg('pet', '我在，请说~')
+      } catch {
+        // 自动续听失败时静默，用户可手动点 🎤
+      }
+    }, 800)
+  }
 }
 
 let senseRecording = null
@@ -2180,6 +2191,16 @@ async function handleVoiceCommand(text) {
   if (command.includes('在吗') || command.includes('在不在') || command.includes('出来')) {
     showManualBubble('我在呀~', '', 1500)
     openChat()
+    if (CONFIG.voiceAutoRecord !== false && CONFIG.voiceEnabled !== false && !senseRecording) {
+      setTimeout(async () => {
+        try {
+          await startSenseRecording()
+          if (chatAppendMsg) chatAppendMsg('pet', '我在，请说~')
+        } catch {
+          if (chatAppendMsg) chatAppendMsg('pet', '录音不可用，请点击 🎤 重试~')
+        }
+      }, 600)
+    }
     return
   }
   if (command.includes('开始') && command.includes('番茄钟')) {
