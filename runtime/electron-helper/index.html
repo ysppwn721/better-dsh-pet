@@ -218,6 +218,47 @@
       min-height: 28px;
       font-size: 12px;
     }
+    /* 覆盖 #menu button 的全局 block 样式，让设置页里的分段按钮/排序按钮保持小按钮形态 */
+    #menu .ms-seg button,
+    #menu .ms-order-preview button {
+      display: inline-block;
+      width: auto;
+      text-align: center;
+      border: 1px solid #d8d8d8;
+      background: #fff;
+      color: #333;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    #menu .ms-order-preview button {
+      padding: 0 4px;
+      border: 0;
+      background: transparent;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    #menu .ms-order-preview button:hover { background: #eef2ff; border-radius: 4px; }
+    /* 动作切换区域美化 */
+    #menu .ms-list {
+      background: #fafbfc;
+      border-color: #e3e5e8;
+      border-radius: 8px;
+      padding: 6px 8px;
+      max-height: 140px;
+    }
+    #menu .ms-list label:hover { background: #f2f4f7; border-radius: 4px; }
+    #menu .ms-order-preview {
+      background: #f8f9fc;
+      border-color: #d0d5e0;
+      border-radius: 8px;
+      padding: 6px;
+    }
+    #menu .ms-order-preview span {
+      background: #e7edff;
+      border: 1px solid #ccd8ff;
+    }
     @media (prefers-reduced-motion: reduce) {
       video.pet-video { transition: none; }
     }
