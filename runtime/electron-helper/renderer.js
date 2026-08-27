@@ -1265,39 +1265,39 @@ function renderSettingsPage() {
         chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;margin:2px;padding:3px 6px;background:#eef2ff;border-radius:6px;font-size:12px'
         const label = document.createElement('span')
         label.textContent = `${index + 1}. ${name}`
-        const up = document.createElement('span')
-        up.textContent = '↑'
-        up.setAttribute('role', 'button')
-        up.style.cssText = 'cursor:pointer;font-size:12px;padding:0 3px;pointer-events:auto;user-select:none'
-        up.onclick = () => {
+        const makeAction = (text, color, action) => {
+          const span = document.createElement('span')
+          span.textContent = text
+          span.setAttribute('role', 'button')
+          span.style.cssText = `cursor:pointer;font-size:12px;padding:0 4px;pointer-events:auto;user-select:none;display:inline-block;${color ? `color:${color};` : ''}`
+          span.onmousedown = (event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            action()
+          }
+          return span
+        }
+        const up = makeAction('↑', '', () => {
           if (index > 0) {
             const prev = actionOrder[index - 1]
             actionOrder[index - 1] = name
             actionOrder[index] = prev
             renderOrder()
           }
-        }
-        const down = document.createElement('span')
-        down.textContent = '↓'
-        down.setAttribute('role', 'button')
-        down.style.cssText = 'cursor:pointer;font-size:12px;padding:0 3px;pointer-events:auto;user-select:none'
-        down.onclick = () => {
+        })
+        const down = makeAction('↓', '', () => {
           if (index < actionOrder.length - 1) {
             const next = actionOrder[index + 1]
             actionOrder[index + 1] = name
             actionOrder[index] = next
             renderOrder()
           }
-        }
-        const remove = document.createElement('span')
-        remove.textContent = '×'
-        remove.setAttribute('role', 'button')
-        remove.style.cssText = 'cursor:pointer;font-size:12px;padding:0 3px;color:#e55;pointer-events:auto;user-select:none'
-        remove.onclick = () => {
+        })
+        const remove = makeAction('×', '#e55', () => {
           actionOrder = actionOrder.filter((n) => n !== name)
           renderOrder()
           renderOrderList()
-        }
+        })
         chip.append(label, up, down, remove)
         orderPreviewEl.appendChild(chip)
       })
