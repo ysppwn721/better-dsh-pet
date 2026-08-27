@@ -117,6 +117,7 @@ public class Win32Foreground {
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
   [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
   public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
 }
 "@
@@ -125,7 +126,11 @@ if ($h -eq [IntPtr]::Zero) { 'none'; exit }
 if (-not [Win32Foreground]::IsWindowVisible($h)) { 'none'; exit }
 $r = New-Object Win32Foreground+RECT
 [Win32Foreground]::GetWindowRect($h, [ref]$r) | Out-Null
-"$($r.Left),$($r.Top),$($r.Right),$($r.Bottom)"
+$procId = 0
+[Win32Foreground]::GetWindowThreadProcessId($h, [ref]$procId) | Out-Null
+$proc = Get-Process -Id $procId -ErrorAction SilentlyContinue
+$procName = if ($proc) { $proc.ProcessName } else { '' }
+"$($r.Left),$($r.Top),$($r.Right),$($r.Bottom)|$procName"
 `
   execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
     timeout: 3000,
@@ -140,12 +145,19 @@ $r = New-Object Win32Foreground+RECT
       callback(null)
       return
     }
-    const parts = text.split(',').map((n) => Number(n.trim()))
+    const [rectPart, processName = ''] = text.split('|')
+    const parts = rectPart.split(',').map((n) => Number(n.trim()))
     if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) {
       callback(null)
       return
     }
-    callback({ x: parts[0], y: parts[1], width: parts[2] - parts[0], height: parts[3] - parts[1] })
+    callback({
+      x: parts[0],
+      y: parts[1],
+      width: parts[2] - parts[0],
+      height: parts[3] - parts[1],
+      processName: String(processName || '').trim().toLowerCase(),
+    })
   })
 }
 
@@ -162,14 +174,39 @@ function isFullscreenRect(rect) {
   })
 }
 
+// 只对“游戏全屏 / 视频全屏”自动隐藏，避免普通办公软件全屏也把桌宠藏起来。
+const KEEP_VISIBLE_FULLSCREEN_PROCESSES = new Set([
+  'explorer', 'code', 'devenv', 'winword', 'excel', 'powerpnt', 'onenote', 'outlook',
+  'acrobat', 'acrord32', 'notepad', 'notepad++', 'windowsTerminal', 'mintty', 'obsidian',
+  'typora', 'wechat', 'qq', 'dingtalk', 'feishu', 'slack', 'teams', 'zoom', 'wps', 'et', 'wpp',
+])
+const BROWSER_PROCESSES = new Set([
+  'chrome', 'msedge', 'firefox', 'opera', 'brave', 'vivaldi', 'chromium',
+  '360chrome', 'qqbrowser', 'sogouexplorer', 'ucbrowser', 'centbrowser', 'liebao',
+])
+const MEDIA_PLAYER_PROCESSES = new Set([
+  'potplayer', 'vlc', 'mpv', 'wmplayer', 'qqplayer', 'baofengplayer', 'kmplayer',
+  'gplayer', 'dplayer', 'iina', 'mxplayer', 'loveplayer', 'stormplayer', 'foxplayer',
+])
+
+function shouldAutoHideForProcess(processName) {
+  if (!processName) return true // 拿不到进程名时按“可能游戏/视频”处理
+  if (KEEP_VISIBLE_FULLSCREEN_PROCESSES.has(processName)) return false
+  if (BROWSER_PROCESSES.has(processName)) return true
+  if (MEDIA_PLAYER_PROCESSES.has(processName)) return true
+  // 其余未知全屏进程按游戏全屏处理（游戏进程名无法穷举）
+  return true
+}
+
 function checkFullscreenAndHide() {
   if (!mainWindow || mainWindow.isDestroyed()) return
   getForegroundWindowRect((rect) => {
     if (!mainWindow || mainWindow.isDestroyed()) return
     const fullscreen = isFullscreenRect(rect)
+    const shouldHide = fullscreen && shouldAutoHideForProcess(rect?.processName)
     // 桌宠自己的窗口也是全屏透明画布，用户正在拖/点时不能把自己当成“全屏应用”藏起来。
     const selfForeground = mainWindow.isFocused()
-    if (fullscreen && !fullscreenHidden && !selfForeground) {
+    if (shouldHide && !fullscreenHidden && !selfForeground) {
       fullscreenHidden = true
       mainWindow.hide()
     } else if (!fullscreen && fullscreenHidden && !userHidden) {
