@@ -331,6 +331,7 @@ function playIdle() {
 }
 
 function playState(state, { pulse = false } = {}) {
+  clearIdleDelay()
   stopMove()
   currentMode = pulse ? 'pulse' : 'state'
   const pool = STATE_ANIMS[state] || STATE_ANIMS.IDLE
@@ -343,6 +344,7 @@ function playState(state, { pulse = false } = {}) {
 }
 
 function playClick() {
+  clearIdleDelay()
   stopMove()
   currentMode = 'click'
   const next = pick(CLICKS, anim)
@@ -354,6 +356,7 @@ function playClick() {
 }
 
 function playDrag() {
+  clearIdleDelay()
   stopMove()
   currentMode = 'drag'
   anim = DRAG
@@ -447,6 +450,13 @@ function clearIdleDelay() {
 function scheduleNextIdle() {
   clearIdleDelay()
   if (CONFIG.actionDelayMs > 0) {
+    // 等待“动作切换间隔”时不要定格在上一动作的最后一帧：
+    // 先播放循环待机呼吸，等间隔结束再进入下一个随机/自定义动作。
+    currentMode = 'idle'
+    anim = IDLE
+    animOnce = false
+    animLoop = true
+    switchTo(IDLE, { loop: true })
     idleDelayTimer = setTimeout(() => {
       idleDelayTimer = null
       playIdle()
@@ -602,6 +612,7 @@ function showManualBubble(message, detail, ttl = 2200) {
 }
 
 function feedPet() {
+  clearIdleDelay()
   const next = pick(EAT_ANIMS, anim)
   anim = next
   animOnce = true
@@ -766,6 +777,7 @@ document.addEventListener('mousemove', (e) => {
 })
 
 function startDrag(e) {
+  clearIdleDelay()
   stopMove()
   e.currentTarget.classList.add('dragging')
   try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* 忽略捕获失败 */ }
