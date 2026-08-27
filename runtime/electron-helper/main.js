@@ -113,6 +113,17 @@ function createWindow() {
   })
 }
 
+async function notifyHostClosed() {
+  const statusUrl = process.env.DSH_PET_STATUS_URL
+  if (!statusUrl) return
+  try {
+    const closeUrl = statusUrl.replace(/\/plugins\/better-dsh-pet\/status$/, '/plugins/better-dsh-pet/close')
+    await fetch(closeUrl, { method: 'POST', cache: 'no-store' })
+  } catch {
+    // 宿主不可达时无法通知，仍继续退出；宿主侧可能按崩溃重启处理。
+  }
+}
+
 function startPolling() {
   const statusUrl = process.env.DSH_PET_STATUS_URL
   if (!statusUrl) {
@@ -140,7 +151,7 @@ function startPolling() {
 app.whenReady().then(() => {
   createWindow()
   ipcMain.on('pet:closed', (_event, reason) => {
-    app.quit()
+    void notifyHostClosed().finally(() => app.quit())
   })
   ipcMain.on('pet:hide', () => {
     if (mainWindow) mainWindow.hide()

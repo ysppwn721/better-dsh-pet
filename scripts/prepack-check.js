@@ -75,8 +75,8 @@ const walk = (dir) => {
     if (entry.isDirectory()) {
       // 跳过不会进 npm 包的目录
       if (!['node_modules', '.git', 'scripts', 'step01', 'step02', 'step03', 'preview'].includes(entry.name)) walk(p);
-    } else if (!entry.name.endsWith('.map')) {
-      total += statSync(p).size; // sourcemap 不计
+    } else if (!entry.name.endsWith('.map') && !entry.name.endsWith('.tgz')) {
+      total += statSync(p).size; // sourcemap / 本地 tgz 不计
     }
   }
 };
