@@ -1159,17 +1159,20 @@ function closeSettings() {
 }
 
 let chatMessages = []
+let chatAppendMsg = null
+let chatDictationPending = false
 function renderChatPanel() {
   chatPanel.innerHTML = `
     <div class="chat-header"><span>🐳 和大肥鱼闲聊</span><span class="chat-close">✕</span></div>
     <div class="chat-messages"></div>
-    <div class="chat-input-row"><input placeholder="说点什么…"><span>发送</span></div>
+    <div class="chat-input-row"><span id="chat-mic">🎤</span><input placeholder="说点什么…"><span>发送</span></div>
   `
   const close = chatPanel.querySelector('.chat-close')
   close.onmousedown = (e) => { e.preventDefault(); closeChat() }
   const messagesEl = chatPanel.querySelector('.chat-messages')
   const input = chatPanel.querySelector('input')
-  const send = chatPanel.querySelector('.chat-input-row span')
+  const send = chatPanel.querySelector('.chat-input-row span:last-child')
+  const mic = chatPanel.querySelector('#chat-mic')
   const appendMsg = (role, text) => {
     const div = document.createElement('div')
     div.className = `chat-msg ${role}`
@@ -1177,20 +1180,29 @@ function renderChatPanel() {
     messagesEl.appendChild(div)
     messagesEl.scrollTop = messagesEl.scrollHeight
   }
+  chatAppendMsg = appendMsg
   for (const msg of chatMessages) appendMsg(msg.role, msg.content)
-  const doSend = async () => {
-    const text = input.value.trim()
-    if (!text) return
+  const doSend = async (text) => {
+    const content = String(text || input.value || '').trim()
+    if (!content) return
     input.value = ''
-    appendMsg('user', text)
-    chatMessages.push({ role: 'user', content: text })
+    appendMsg('user', content)
+    chatMessages.push({ role: 'user', content })
     appendMsg('pet', '正在想…')
-    const result = await window.petBridge.sendChat(text)
+    const result = await window.petBridge.sendChat(content)
     const reply = result?.reply || '大肥鱼走神了，再说一遍吧~'
     const last = messagesEl.querySelector('.chat-msg.pet:last-child')
     if (last) last.textContent = reply
     chatMessages.push({ role: 'assistant', content: reply })
     messagesEl.scrollTop = messagesEl.scrollHeight
+    window.petBridge.speak(reply)
+  }
+  mic.onmousedown = (e) => {
+    e.preventDefault()
+    if (chatDictationPending) return
+    chatDictationPending = true
+    appendMsg('pet', '我在听，请说话…')
+    window.petBridge.startDictation()
   }
   send.onmousedown = (e) => { e.preventDefault(); void doSend() }
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') void doSend() })
@@ -1203,6 +1215,28 @@ function openChat() {
 function closeChat() {
   chatPanel.classList.remove('visible')
   updateClickThrough()
+}
+
+async function handleDictationResult(text) {
+  chatDictationPending = false
+  const content = String(text || '').trim()
+  if (!content) {
+    if (chatAppendMsg) chatAppendMsg('pet', '没听清，再说一次吧~')
+    return
+  }
+  if (chatAppendMsg) chatAppendMsg('user', content)
+  chatMessages.push({ role: 'user', content })
+  if (chatAppendMsg) chatAppendMsg('pet', '正在想…')
+  const result = await window.petBridge.sendChat(content)
+  const reply = result?.reply || '大肥鱼走神了，再说一遍吧~'
+  if (chatPanel && chatPanel.classList.contains('visible')) {
+    const messagesEl = chatPanel.querySelector('.chat-messages')
+    const last = messagesEl?.querySelector('.chat-msg.pet:last-child')
+    if (last) last.textContent = reply
+    if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight
+  }
+  chatMessages.push({ role: 'assistant', content: reply })
+  window.petBridge.speak(reply)
 }
 
 function renderSettingsPage() {
@@ -1510,7 +1544,8 @@ function renderMainMenu() {
       3000,
     )
   })
-  addMenuButton('闲聊', () => {
+  addMenuButton('闲聊', (event) => {
+    event.stopPropagation()
     menuEl.classList.remove('visible')
     updateClickThrough()
     openChat()
@@ -1931,6 +1966,7 @@ window.petBridge.onStatus((status) => {
 })
 
 window.petBridge.onVoiceResult(handleVoiceCommand)
+window.petBridge.onDictationResult(handleDictationResult)
 window.petBridge.onWakeState((enabled) => {
   wakeWordEnabled = enabled
 })

@@ -277,6 +277,62 @@ function sendVoiceResult(text) {
   }
 }
 
+function startVoiceDictation(callback) {
+  const script = `
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+Add-Type -AssemblyName System.Speech
+try {
+  $culture = [System.Globalization.CultureInfo]::GetCultureInfo('zh-CN')
+  $recognizer = New-Object System.Speech.Recognition.SpeechRecognitionEngine($culture)
+  $recognizer.SetInputToDefaultAudioDevice()
+  $recognizer.LoadGrammar((New-Object System.Speech.Recognition.DictationGrammar))
+  $result = $recognizer.Recognize()
+  if ($result -ne $null) { $result.Text } else { '' }
+} catch {
+  'ERROR: ' + $_.Exception.Message
+}
+`
+  execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+    timeout: 15000,
+    windowsHide: true,
+    encoding: 'utf8',
+  }, (error, stdout) => {
+    if (error) {
+      callback('')
+      return
+    }
+    const text = String(stdout || '').trim()
+    if (text.startsWith('ERROR:')) {
+      callback('')
+      return
+    }
+    callback(text)
+  })
+}
+
+function speakText(text) {
+  const safeText = String(text || '').slice(0, 200)
+  if (!safeText) return
+  const script = `
+Add-Type -AssemblyName System.Speech
+try {
+  $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer
+  $synth.Speak($env:DICT_TEXT)
+} catch { }
+`
+  execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+    timeout: 15000,
+    windowsHide: true,
+    env: { ...process.env, DICT_TEXT: safeText },
+  }, () => {})
+}
+
+function sendVoiceResult(text) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('pet:voice-result', text || '')
+  }
+}
+
 function startWakeWordListener() {
   if (wakeWordProcess) return
   const script = `
@@ -472,6 +528,16 @@ app.whenReady().then(() => {
         event.sender.send('pet:voice-result', text || '')
       }
     })
+  })
+  ipcMain.on('pet:dictation-start', (event) => {
+    startVoiceDictation((text) => {
+      if (!event.sender.isDestroyed()) {
+        event.sender.send('pet:dictation-result', text || '')
+      }
+    })
+  })
+  ipcMain.on('pet:speak', (_event, text) => {
+    speakText(text)
   })
   ipcMain.on('pet:wake-word-toggle', (event) => {
     if (wakeWordProcess) {

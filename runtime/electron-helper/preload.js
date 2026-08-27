@@ -58,4 +58,15 @@ contextBridge.exposeInMainWorld('petBridge', {
   sendChat(message) {
     return ipcRenderer.invoke('pet:chat', message)
   },
+  startDictation() {
+    ipcRenderer.send('pet:dictation-start')
+  },
+  onDictationResult(callback) {
+    const listener = (_event, result) => callback(result)
+    ipcRenderer.on('pet:dictation-result', listener)
+    return () => ipcRenderer.removeListener('pet:dictation-result', listener)
+  },
+  speak(text) {
+    ipcRenderer.send('pet:speak', text)
+  },
 })
