@@ -2103,6 +2103,11 @@ function handleVoiceCommand(text) {
     showManualBubble('没听清，再说一次吧~', '', 2500)
     return
   }
+  if (command.includes('在吗') || command.includes('在不在') || command.includes('出来')) {
+    showManualBubble('我在呀~', '', 1500)
+    openChat()
+    return
+  }
   if (command.includes('开始') && command.includes('番茄钟')) {
     startPomodoro('work', CONFIG.workMinutes)
     showManualBubble('收到，开始番茄钟~', `${CONFIG.workMinutes} 分钟`, 3000)
