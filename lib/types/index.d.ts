@@ -58,6 +58,8 @@ export interface Config {
     moveChance?: number;
     /** 动作切换间隔（毫秒）。默认 0。 */
     actionDelayMs?: number;
+    /** 动画播放速度（1.0～2.0）。默认 1。 */
+    playbackRate?: number;
     /** 旧版 /pet 路由的 full 资源根目录。 */
     fullRoot?: string;
     /** Helper 进程选项。 */

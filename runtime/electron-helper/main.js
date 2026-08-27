@@ -5,7 +5,7 @@
  * 改为轮询 DSH 宿主暴露的 /plugins/better-dsh-pet/status HTTP 端点，
  * 把最新状态转发给透明置顶窗口内的 renderer。
  */
-const { app, BrowserWindow, ipcMain, screen, shell } = require('electron')
+const { app, BrowserWindow, ipcMain, screen, shell, Tray, Menu, nativeImage } = require('electron')
 const path = require('node:path')
 const { spawn } = require('node:child_process')
 const { existsSync } = require('node:fs')
@@ -13,8 +13,14 @@ const { existsSync } = require('node:fs')
 // 允许无用户手势直接播放 MP3 闹钟
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 
+// 透明置顶全屏窗口在某些显卡/驱动下会干扰硬件视频叠加层，
+// 导致 B 站等视频在拖拽桌宠或系统音量弹层出现时黑屏。
+// 关闭本应用的硬件加速可避免这种合成冲突（桌宠是轻量 2D 动画，影响很小）。
+app.disableHardwareAcceleration()
+
 let mainWindow = null
 let pollTimer = null
+let tray = null
 
 function setClickThrough(ignore) {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -51,6 +57,46 @@ function openDesktop() {
     child.unref()
   } catch (error) {
     console.error('[better-dsh-pet-helper] failed to launch DSH Desktop:', error)
+  }
+}
+
+function createTray() {
+  if (tray) return
+  const icon = nativeImage.createFromDataURL('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABKSURBVDhPzY6xDQAwCMN6Wo/tn3RjMLQiEgORPBFHrDUy+5i9YDeEQgYdD4s/6EpyOsJjhb4BHqr0fTBjQB2h62Exg04IBUlWcwH8iaT0f2HaowAAAABJRU5ErkJggg==')
+  tray = new Tray(icon)
+  tray.setToolTip('Better DSH Pet')
+  const toggleVisible = () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    if (mainWindow.isVisible()) mainWindow.hide()
+    else mainWindow.show()
+  }
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: '显示 / 隐藏桌宠', click: toggleVisible },
+    { type: 'separator' },
+    {
+      label: '退出',
+      click: () => {
+        void notifyHostClosed().finally(() => app.quit())
+      },
+    },
+  ]))
+  tray.on('click', toggleVisible)
+}
+
+// Windows 上资源管理器重启、分辨率/DPI 变化、休眠唤醒等可能让置顶丢失，
+// 借鉴 dsh-pet-indesktop 的“置顶看门狗”：定期重新置顶。
+function startTopmostWatchdog() {
+  setInterval(() => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    if (!mainWindow.isAlwaysOnTop()) {
+      mainWindow.setAlwaysOnTop(true, 'screen-saver')
+    }
+    mainWindow.setAlwaysOnTop(true, 'screen-saver')
+  }, 30000)
+  if (mainWindow) {
+    mainWindow.on('show', () => {
+      mainWindow.setAlwaysOnTop(true, 'screen-saver')
+    })
   }
 }
 
@@ -102,6 +148,7 @@ function createWindow() {
       bubbleMode: process.env.DSH_PET_BUBBLE_MODE || 'always',
       bubbleStates: process.env.DSH_PET_BUBBLE_STATES || 'SUCCESS,ERROR,WAITING',
       webuiUrl: process.env.DSH_PET_WEBUI_URL || 'http://127.0.0.1:3080/',
+      playbackRate: process.env.DSH_PET_PLAYBACK_RATE || '1',
     },
   }).then(() => {
     startPolling()
@@ -154,6 +201,8 @@ function startPolling() {
 
 app.whenReady().then(() => {
   createWindow()
+  createTray()
+  startTopmostWatchdog()
   ipcMain.on('pet:closed', (_event, reason) => {
     void notifyHostClosed().finally(() => app.quit())
   })

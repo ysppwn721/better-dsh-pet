@@ -39,6 +39,7 @@ export interface Config {
     petSize?: number;
     moveChance?: number;
     actionDelayMs?: number;
+    playbackRate?: number;
 }
 
 /**

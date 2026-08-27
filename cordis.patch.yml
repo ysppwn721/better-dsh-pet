@@ -40,3 +40,4 @@
         petSize: 460              # 宠物宽度（px）[patched: 462 非 10 倍数, schema step(10) 校验失败]
         moveChance: 20            # 移动频繁度（百分比）
         actionDelayMs: 0          # 动作切换间隔（毫秒）
+        playbackRate: 1           # 动画播放速度（1.0x～2.0x）

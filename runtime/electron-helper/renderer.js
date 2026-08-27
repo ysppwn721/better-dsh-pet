@@ -25,6 +25,7 @@ const CONFIG = {
   petSize: Number(params.get('petSize') || '460'),
   moveChance: Number(params.get('moveChance') || '20'),
   actionDelayMs: Number(params.get('actionDelayMs') || '0'),
+  playbackRate: Number(params.get('playbackRate') || '1'),
 }
 
 // ---------- 资源根 ----------
@@ -256,6 +257,7 @@ function switchTo(next, { once = true, loop = false } = {}) {
   el.muted = true
   el.autoplay = true
   el.playsInline = true
+  el.playbackRate = CONFIG.playbackRate
   el.onended = loop ? null : () => handleEnded()
   el.load()
   const onReady = () => {
@@ -371,9 +373,10 @@ function playDrag() {
   stopMove()
   currentMode = 'drag'
   anim = DRAG
-  animOnce = true
-  animLoop = false
-  switchTo(DRAG, { once: true })
+  animOnce = false
+  animLoop = true
+  // 拖拽可能持续超过单段动画时长，必须循环播放，否则松手前会定格在最后一帧。
+  switchTo(DRAG, { loop: true })
 }
 
 // ---------- 走动效果 ----------
@@ -1086,6 +1089,14 @@ function renderAppearanceSettings() {
   delayInput.value = String(CONFIG.actionDelayMs)
   delayInput.style.width = '120px'
 
+  const speedInput = document.createElement('input')
+  speedInput.type = 'range'
+  speedInput.min = 1
+  speedInput.max = 2
+  speedInput.step = 0.1
+  speedInput.value = String(CONFIG.playbackRate)
+  speedInput.style.width = '120px'
+
   const row = (label, input, hint) => {
     const div = document.createElement('div')
     div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;font-size:12px'
@@ -1105,6 +1116,7 @@ function renderAppearanceSettings() {
     row('宠物宽度(px)', sizeInput, '重启后生效'),
     row(`移动频繁度 ${moveInput.value}%`, moveInput),
     row(`动作切换间隔 ${delayInput.value}ms`, delayInput),
+    row(`播放速度 ${speedInput.value}x`, speedInput),
   )
   moveInput.addEventListener('input', () => {
     const label = moveInput.parentElement
@@ -1114,15 +1126,24 @@ function renderAppearanceSettings() {
     const label = delayInput.parentElement
     label.firstChild.textContent = `动作切换间隔 ${delayInput.value}ms`
   })
+  speedInput.addEventListener('input', () => {
+    const label = speedInput.parentElement
+    label.firstChild.textContent = `播放速度 ${speedInput.value}x`
+  })
 
   addMenuButton('保存', () => {
     CONFIG.petSize = Math.min(1000, Math.max(100, Math.round(Number(sizeInput.value) / 10) * 10 || 460))
     CONFIG.moveChance = Math.min(100, Math.max(0, Number(moveInput.value) || 0))
     CONFIG.actionDelayMs = Math.min(5000, Math.max(0, Number(delayInput.value) || 0))
+    CONFIG.playbackRate = Math.min(2, Math.max(1, Number(speedInput.value) || 1))
+    for (const video of [videoA, videoB]) {
+      if (video) video.playbackRate = CONFIG.playbackRate
+    }
     window.petBridge.saveConfig({
       petSize: CONFIG.petSize,
       moveChance: CONFIG.moveChance,
       actionDelayMs: CONFIG.actionDelayMs,
+      playbackRate: CONFIG.playbackRate,
     })
     menuPage = 'main'
     menuEl.classList.remove('visible')
@@ -1262,7 +1283,12 @@ function applyStatus(incoming) {
     CONFIG.petSize = Number(incoming.config.petSize) || CONFIG.petSize
     CONFIG.moveChance = Number(incoming.config.moveChance) ?? CONFIG.moveChance
     CONFIG.actionDelayMs = Number(incoming.config.actionDelayMs) ?? CONFIG.actionDelayMs
+    CONFIG.playbackRate = Number(incoming.config.playbackRate) || CONFIG.playbackRate
     CONFIG.scale = Number(incoming.config.scale) || CONFIG.scale
+    // 播放速度变化立即作用到当前/备用视频。
+    for (const video of [videoA, videoB]) {
+      if (video && !video.paused) video.playbackRate = CONFIG.playbackRate
+    }
     applySize()
   }
 
