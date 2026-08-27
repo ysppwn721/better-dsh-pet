@@ -41,4 +41,5 @@
         moveChance: 20            # 移动频繁度（百分比）
         actionDelayMs: 0          # 动作切换间隔（毫秒）
         playbackRate: 1           # 动画播放速度（1.0x～2.0x）
+        voiceEnabled: true        # 是否启用语音功能（麦克风）
         voiceWakeAutoStart: false # 启动桌宠时自动开启语音唤醒（麦克风）

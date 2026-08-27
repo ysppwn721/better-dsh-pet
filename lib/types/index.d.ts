@@ -60,6 +60,8 @@ export interface Config {
     actionDelayMs?: number;
     /** 动画播放速度（1.0～2.0）。默认 1。 */
     playbackRate?: number;
+    /** 是否启用语音功能（麦克风）。默认 true。 */
+    voiceEnabled?: boolean;
     /** 启动桌宠时自动开启语音唤醒（麦克风）。默认 false。 */
     voiceWakeAutoStart?: boolean;
     /** 旧版 /pet 路由的 full 资源根目录。 */

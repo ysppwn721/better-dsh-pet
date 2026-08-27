@@ -26,6 +26,7 @@ const CONFIG = {
   moveChance: Number(params.get('moveChance') || '20'),
   actionDelayMs: Number(params.get('actionDelayMs') || '0'),
   playbackRate: Number(params.get('playbackRate') || '1'),
+  voiceEnabled: params.get('voiceEnabled') !== '0',
   voiceWakeAutoStart: params.get('voiceWakeAutoStart') === '1',
 }
 
@@ -1201,6 +1202,7 @@ function renderChatPanel() {
   const input = chatPanel.querySelector('input')
   const send = chatPanel.querySelector('.chat-input-row span:last-child')
   const mic = chatPanel.querySelector('#chat-mic')
+  if (CONFIG.voiceEnabled === false) mic.style.display = 'none'
   const appendMsg = (role, text) => {
     const div = document.createElement('div')
     div.className = `chat-msg ${role}`
@@ -1313,6 +1315,7 @@ function renderSettingsPage() {
     <div class="ms-field" style="align-items:flex-start"><span>可选动作</span><span id="ms-actionOrderList" class="ms-list"></span></div>
     <div style="font-size:13px;font-weight:600;margin:8px 0 6px;color:#333">功能</div>
     <label class="ms-check"><input type="checkbox" id="ms-roastEnabled" ${CONFIG.roastEnabled ? 'checked' : ''}> 自动吐槽</label>
+    <label class="ms-check"><input type="checkbox" id="ms-voiceEnabled" ${CONFIG.voiceEnabled !== false ? 'checked' : ''}> 启用语音功能（麦克风）</label>
     <label class="ms-check"><input type="checkbox" id="ms-voiceWakeNow" ${wakeWordEnabled ? 'checked' : ''}> 开启语音唤醒（麦克风，立即生效）</label>
     <label class="ms-check"><input type="checkbox" id="ms-voiceWakeAutoStart" ${CONFIG.voiceWakeAutoStart ? 'checked' : ''}> 启动时自动开启语音唤醒</label>
     <div class="ms-field"><span>气泡模式</span><span id="ms-bubbleMode" class="ms-seg"></span></div>
@@ -1482,6 +1485,7 @@ function renderSettingsPage() {
     const workMinutes = number('#ms-workMinutes', CONFIG.workMinutes, 1, 120)
     const breakMinutes = number('#ms-breakMinutes', CONFIG.breakMinutes, 1, 60)
     const roastEnabled = val('#ms-roastEnabled').checked
+    const voiceEnabled = val('#ms-voiceEnabled').checked
     const voiceWakeAutoStart = val('#ms-voiceWakeAutoStart').checked
     const bubbleStates = parseList(val('#ms-bubbleStates').value)
     const finalEnabledActions = enabledActions.length === ACTS.length ? [] : enabledActions.slice()
@@ -1489,9 +1493,14 @@ function renderSettingsPage() {
     Object.assign(CONFIG, {
       petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
       reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
+      voiceEnabled,
       voiceWakeAutoStart,
       bubbleMode, bubbleStates, enabledActions: finalEnabledActions, actionOrder: finalActionOrder,
     })
+    if (!voiceEnabled && wakeWordEnabled) {
+      window.petBridge.toggleWakeWord()
+      wakeWordEnabled = false
+    }
     for (const video of [videoA, videoB]) {
       if (video) video.playbackRate = playbackRate
     }
@@ -1499,6 +1508,7 @@ function renderSettingsPage() {
     window.petBridge.saveConfig({
       petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
       reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
+      voiceEnabled,
       voiceWakeAutoStart,
       bubbleMode, bubbleStates, enabledActions: finalEnabledActions, actionOrder: finalActionOrder,
     })
@@ -1570,22 +1580,24 @@ function renderMainMenu() {
     updateClickThrough()
     window.petBridge.requestRoast()
   })
-  addMenuButton('语音控制', () => {
-    menuEl.classList.remove('visible')
-    updateClickThrough()
-    showManualBubble('我在听…请说指令', '例如：开始番茄钟 / 喂食 / 余额', 4000)
-    window.petBridge.startVoice()
-  })
-  addMenuButton(wakeWordEnabled ? '关闭语音唤醒' : '开启语音唤醒', () => {
-    menuEl.classList.remove('visible')
-    updateClickThrough()
-    window.petBridge.toggleWakeWord()
-    showManualBubble(
-      wakeWordEnabled ? '语音唤醒已关闭' : '语音唤醒已开启',
-      wakeWordEnabled ? '' : '说“大肥鱼+指令”，例如：大肥鱼开始番茄钟',
-      3000,
-    )
-  })
+  if (CONFIG.voiceEnabled !== false) {
+    addMenuButton('语音控制', () => {
+      menuEl.classList.remove('visible')
+      updateClickThrough()
+      showManualBubble('我在听…请说指令', '例如：开始番茄钟 / 喂食 / 余额', 4000)
+      window.petBridge.startVoice()
+    })
+    addMenuButton(wakeWordEnabled ? '关闭语音唤醒' : '开启语音唤醒', () => {
+      menuEl.classList.remove('visible')
+      updateClickThrough()
+      window.petBridge.toggleWakeWord()
+      showManualBubble(
+        wakeWordEnabled ? '语音唤醒已关闭' : '语音唤醒已开启',
+        wakeWordEnabled ? '' : '说“大肥鱼+指令”，例如：大肥鱼开始番茄钟',
+        3000,
+      )
+    })
+  }
   addMenuButton('闲聊', (event) => {
     event.stopPropagation()
     menuEl.classList.remove('visible')
@@ -1887,6 +1899,7 @@ function applyStatus(incoming) {
     CONFIG.moveChance = Number(incoming.config.moveChance) ?? CONFIG.moveChance
     CONFIG.actionDelayMs = Number(incoming.config.actionDelayMs) ?? CONFIG.actionDelayMs
     CONFIG.playbackRate = Number(incoming.config.playbackRate) || CONFIG.playbackRate
+    CONFIG.voiceEnabled = incoming.config.voiceEnabled !== false
     CONFIG.voiceWakeAutoStart = incoming.config.voiceWakeAutoStart === true
     CONFIG.scale = Number(incoming.config.scale) || CONFIG.scale
     // 播放速度变化立即作用到当前/备用视频。
@@ -2014,7 +2027,7 @@ window.petBridge.onWakeState((enabled) => {
 })
 
 // ---------- 启动 ----------
-if (CONFIG.voiceWakeAutoStart && !wakeWordEnabled) {
+if (CONFIG.voiceEnabled !== false && CONFIG.voiceWakeAutoStart && !wakeWordEnabled) {
   window.petBridge.toggleWakeWord()
   wakeWordEnabled = true
 }

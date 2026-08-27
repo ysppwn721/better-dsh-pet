@@ -447,6 +447,7 @@ function createWindow() {
       bubbleStates: process.env.DSH_PET_BUBBLE_STATES || 'SUCCESS,ERROR,WAITING',
       webuiUrl: process.env.DSH_PET_WEBUI_URL || 'http://127.0.0.1:3080/',
       playbackRate: process.env.DSH_PET_PLAYBACK_RATE || '1',
+      voiceEnabled: process.env.DSH_PET_VOICE_ENABLED === '0' ? '0' : '1',
       voiceWakeAutoStart: process.env.DSH_PET_VOICE_WAKE_AUTO_START === '1' ? '1' : '0',
     },
   }).then(() => {
