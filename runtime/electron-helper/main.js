@@ -167,7 +167,9 @@ function checkFullscreenAndHide() {
   getForegroundWindowRect((rect) => {
     if (!mainWindow || mainWindow.isDestroyed()) return
     const fullscreen = isFullscreenRect(rect)
-    if (fullscreen && !fullscreenHidden) {
+    // 桌宠自己的窗口也是全屏透明画布，用户正在拖/点时不能把自己当成“全屏应用”藏起来。
+    const selfForeground = mainWindow.isFocused()
+    if (fullscreen && !fullscreenHidden && !selfForeground) {
       fullscreenHidden = true
       mainWindow.hide()
     } else if (!fullscreen && fullscreenHidden && !userHidden) {
@@ -206,6 +208,7 @@ function createWindow() {
     skipTaskbar: true,
     resizable: false,
     hasShadow: false,
+    focusable: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
