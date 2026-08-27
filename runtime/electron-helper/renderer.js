@@ -997,9 +997,14 @@ function showMenu(x, y) {
   } else {
     renderMainMenu()
   }
-  // 外层菜单不滚动，动作列表等长内容由内部子面板自己滚动，避免出现双滚动条。
-  menuEl.style.maxHeight = 'none'
-  menuEl.style.overflowY = 'visible'
+  // 设置页内容多，允许菜单内滚动；主菜单保持不滚动。
+  if (menuPage === 'settings') {
+    menuEl.style.maxHeight = '80vh'
+    menuEl.style.overflowY = 'auto'
+  } else {
+    menuEl.style.maxHeight = 'none'
+    menuEl.style.overflowY = 'visible'
+  }
   menuEl.classList.add('visible')
   // 让菜单向右上方展开，避开宠物模型；再根据实际尺寸夹在屏幕内。
   const rect = menuEl.getBoundingClientRect()
@@ -1153,36 +1158,89 @@ function renderSettingsPage() {
     menuPage = 'main'
     showMenu(lastMenuPos.x, lastMenuPos.y)
   })
-  renderEmotionBars(menuEl)
-  addMenuButton('外观与行为', () => {
-    menuPage = 'appearance'
-    showMenu(lastMenuPos.x, lastMenuPos.y)
-  })
-  addMenuButton('番茄钟', () => {
-    menuPage = 'pomodoro'
-    showMenu(lastMenuPos.x, lastMenuPos.y)
-  })
-  addMenuButton('待机动作', () => {
-    menuPage = 'actions'
-    showMenu(lastMenuPos.x, lastMenuPos.y)
-  })
-  addMenuButton('功能开关', () => {
-    menuPage = 'features'
-    showMenu(lastMenuPos.x, lastMenuPos.y)
-  })
-  addMenuButton('打开 DSH 桌面版', () => {
-    menuEl.classList.remove('visible')
-    updateClickThrough()
-    window.petBridge.openDesktop()
-  })
-  if (CONFIG.enabled) {
-    addMenuButton('禁用 Better DSH Pet', () => {
-      CONFIG.enabled = false
-      window.petBridge.saveConfig({ enabled: false })
-      menuEl.classList.remove('visible')
-      updateClickThrough()
-    })
+  const bubbleStatesText = Array.isArray(CONFIG.bubbleStates) ? CONFIG.bubbleStates.join(', ') : ''
+  const form = document.createElement('div')
+  form.style.cssText = 'min-width:300px;padding:2px 2px 6px'
+  form.innerHTML = `
+    <div style="font-size:13px;font-weight:600;margin:4px 0 6px;color:#333">外观与行为</div>
+    <div class="ms-field"><span>宠物宽度</span><input type="number" id="ms-petSize" min="100" max="1000" step="10" value="${CONFIG.petSize}"></div>
+    <div class="ms-field"><span>移动频繁度</span><input type="range" id="ms-moveChance" min="0" max="100" step="1" value="${CONFIG.moveChance}"><em id="ms-moveChance-val">${CONFIG.moveChance}%</em></div>
+    <div class="ms-field"><span>动作间隔</span><input type="range" id="ms-actionDelayMs" min="0" max="5000" step="100" value="${CONFIG.actionDelayMs}"><em id="ms-actionDelayMs-val">${CONFIG.actionDelayMs}ms</em></div>
+    <div class="ms-field"><span>播放速度</span><input type="range" id="ms-playbackRate" min="1" max="2" step="0.1" value="${CONFIG.playbackRate}"><em id="ms-playbackRate-val">${CONFIG.playbackRate}x</em></div>
+    <div class="ms-field"><span>活跃程度</span><select id="ms-activityLevel">
+      <option value="quiet" ${CONFIG.activityLevel === 'quiet' ? 'selected' : ''}>安静</option>
+      <option value="normal" ${CONFIG.activityLevel === 'normal' ? 'selected' : ''}>标准</option>
+      <option value="lively" ${CONFIG.activityLevel === 'lively' ? 'selected' : ''}>活泼</option>
+    </select></div>
+    <label class="ms-check"><input type="checkbox" id="ms-reducedMotion" ${CONFIG.reducedMotion ? 'checked' : ''}> 减少动态</label>
+    <label class="ms-check"><input type="checkbox" id="ms-walkEnabled" ${CONFIG.walkEnabled ? 'checked' : ''}> 允许行走</label>
+    <div style="font-size:13px;font-weight:600;margin:8px 0 6px;color:#333">番茄钟</div>
+    <div class="ms-field"><span>工作时长</span><input type="number" id="ms-workMinutes" min="1" max="120" step="1" value="${CONFIG.workMinutes}"></div>
+    <div class="ms-field"><span>休息时长</span><input type="number" id="ms-breakMinutes" min="1" max="60" step="1" value="${CONFIG.breakMinutes}"></div>
+    <div style="font-size:13px;font-weight:600;margin:8px 0 6px;color:#333">动作</div>
+    <div class="ms-field"><span>待机动作</span><textarea id="ms-enabledActions" placeholder="留空=全部，逗号分隔">${Array.isArray(CONFIG.enabledActions) ? CONFIG.enabledActions.join(', ') : ''}</textarea></div>
+    <div class="ms-field"><span>播放顺序</span><textarea id="ms-actionOrder" placeholder="留空=随机，逗号分隔">${Array.isArray(CONFIG.actionOrder) ? CONFIG.actionOrder.join(', ') : ''}</textarea></div>
+    <div style="font-size:13px;font-weight:600;margin:8px 0 6px;color:#333">功能</div>
+    <label class="ms-check"><input type="checkbox" id="ms-roastEnabled" ${CONFIG.roastEnabled ? 'checked' : ''}> 自动吐槽</label>
+    <div class="ms-field"><span>气泡模式</span><select id="ms-bubbleMode">
+      <option value="always" ${CONFIG.bubbleMode === 'always' ? 'selected' : ''}>常驻显示</option>
+      <option value="hidden" ${CONFIG.bubbleMode === 'hidden' ? 'selected' : ''}>完全隐藏</option>
+      <option value="custom" ${CONFIG.bubbleMode === 'custom' ? 'selected' : ''}>自定义</option>
+    </select></div>
+    <div class="ms-field"><span>气泡状态</span><textarea id="ms-bubbleStates" placeholder="SUCCESS,ERROR,WAITING">${bubbleStatesText}</textarea></div>
+  `
+  menuEl.appendChild(form)
+
+  const bindRange = (id, valId, suffix) => {
+    const input = form.querySelector(id)
+    const output = form.querySelector(valId)
+    input.addEventListener('input', () => { output.textContent = `${input.value}${suffix}` })
   }
+  bindRange('#ms-moveChance', '#ms-moveChance-val', '%')
+  bindRange('#ms-actionDelayMs', '#ms-actionDelayMs-val', 'ms')
+  bindRange('#ms-playbackRate', '#ms-playbackRate-val', 'x')
+
+  addMenuButton('保存', () => {
+    const val = (id) => form.querySelector(id)
+    const number = (id, fallback, min, max) => {
+      const raw = Number(val(id).value)
+      return Math.min(max, Math.max(min, Number.isFinite(raw) ? raw : fallback))
+    }
+    const petSize = Math.round(number('#ms-petSize', CONFIG.petSize, 100, 1000) / 10) * 10
+    const moveChance = number('#ms-moveChance', CONFIG.moveChance, 0, 100)
+    const actionDelayMs = number('#ms-actionDelayMs', CONFIG.actionDelayMs, 0, 5000)
+    const playbackRate = number('#ms-playbackRate', CONFIG.playbackRate, 1, 2)
+    const activityLevel = val('#ms-activityLevel').value
+    const reducedMotion = val('#ms-reducedMotion').checked
+    const walkEnabled = val('#ms-walkEnabled').checked
+    const workMinutes = number('#ms-workMinutes', CONFIG.workMinutes, 1, 120)
+    const breakMinutes = number('#ms-breakMinutes', CONFIG.breakMinutes, 1, 60)
+    const roastEnabled = val('#ms-roastEnabled').checked
+    const bubbleMode = val('#ms-bubbleMode').value
+    const bubbleStates = parseList(val('#ms-bubbleStates').value)
+    const enabledActions = parseList(val('#ms-enabledActions').value)
+    const actionOrder = parseList(val('#ms-actionOrder').value)
+    Object.assign(CONFIG, {
+      petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
+      reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
+      bubbleMode, bubbleStates, enabledActions, actionOrder,
+    })
+    for (const video of [videoA, videoB]) {
+      if (video) video.playbackRate = playbackRate
+    }
+    applySize()
+    window.petBridge.saveConfig({
+      petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
+      reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
+      bubbleMode, bubbleStates, enabledActions, actionOrder,
+    })
+    menuPage = 'main'
+    showMenu(lastMenuPos.x, lastMenuPos.y)
+  })
+  addMenuButton('返回', () => {
+    menuPage = 'main'
+    showMenu(lastMenuPos.x, lastMenuPos.y)
+  })
 }
 
 function renderFeatureSettings() {
@@ -1216,6 +1274,7 @@ function renderFeatureSettings() {
 }
 
 function renderMainMenu() {
+  renderEmotionBars(menuEl)
   addMenuButton('喂食', () => {
     menuEl.classList.remove('visible')
     updateClickThrough()
@@ -1243,11 +1302,9 @@ function renderMainMenu() {
     updateClickThrough()
     window.petBridge.requestRoast()
   })
-  addMenuButton('设置…', (event) => {
-    event.stopPropagation()
-    menuEl.classList.remove('visible')
-    updateClickThrough()
-    openSettings()
+  addMenuButton('设置…', () => {
+    menuPage = 'settings'
+    showMenu(lastMenuPos.x, lastMenuPos.y)
   })
   addMenuButton('本次隐藏', () => {
     menuEl.classList.remove('visible')
