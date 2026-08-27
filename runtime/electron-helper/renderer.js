@@ -1243,7 +1243,8 @@ function renderMainMenu() {
     updateClickThrough()
     window.petBridge.requestRoast()
   })
-  addMenuButton('设置…', () => {
+  addMenuButton('设置…', (event) => {
+    event.stopPropagation()
     menuEl.classList.remove('visible')
     updateClickThrough()
     openSettings()
