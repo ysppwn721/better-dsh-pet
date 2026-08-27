@@ -176,6 +176,7 @@ const bubbleTitle = document.getElementById('bubble-title')
 const bubbleDetail = document.getElementById('bubble-detail')
 const menuEl = document.getElementById('menu')
 const settingsPanel = document.getElementById('settings-panel')
+const chatPanel = document.getElementById('chat-panel')
 
 // ---------- 基础尺寸 ----------
 let size = (CONFIG.petSize || 460) * CONFIG.scale
@@ -1157,6 +1158,53 @@ function closeSettings() {
   updateClickThrough()
 }
 
+let chatMessages = []
+function renderChatPanel() {
+  chatPanel.innerHTML = `
+    <div class="chat-header"><span>🐳 和大肥鱼闲聊</span><span class="chat-close">✕</span></div>
+    <div class="chat-messages"></div>
+    <div class="chat-input-row"><input placeholder="说点什么…"><span>发送</span></div>
+  `
+  const close = chatPanel.querySelector('.chat-close')
+  close.onmousedown = (e) => { e.preventDefault(); closeChat() }
+  const messagesEl = chatPanel.querySelector('.chat-messages')
+  const input = chatPanel.querySelector('input')
+  const send = chatPanel.querySelector('.chat-input-row span')
+  const appendMsg = (role, text) => {
+    const div = document.createElement('div')
+    div.className = `chat-msg ${role}`
+    div.textContent = text
+    messagesEl.appendChild(div)
+    messagesEl.scrollTop = messagesEl.scrollHeight
+  }
+  for (const msg of chatMessages) appendMsg(msg.role, msg.content)
+  const doSend = async () => {
+    const text = input.value.trim()
+    if (!text) return
+    input.value = ''
+    appendMsg('user', text)
+    chatMessages.push({ role: 'user', content: text })
+    appendMsg('pet', '正在想…')
+    const result = await window.petBridge.sendChat(text)
+    const reply = result?.reply || '大肥鱼走神了，再说一遍吧~'
+    const last = messagesEl.querySelector('.chat-msg.pet:last-child')
+    if (last) last.textContent = reply
+    chatMessages.push({ role: 'assistant', content: reply })
+    messagesEl.scrollTop = messagesEl.scrollHeight
+  }
+  send.onmousedown = (e) => { e.preventDefault(); void doSend() }
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') void doSend() })
+}
+function openChat() {
+  renderChatPanel()
+  chatPanel.classList.add('visible')
+  window.petBridge.setIgnoreMouse(false)
+}
+function closeChat() {
+  chatPanel.classList.remove('visible')
+  updateClickThrough()
+}
+
 function renderSettingsPage() {
   addMenuButton('← 返回主菜单', () => {
     menuPage = 'main'
@@ -1462,6 +1510,11 @@ function renderMainMenu() {
       3000,
     )
   })
+  addMenuButton('闲聊', () => {
+    menuEl.classList.remove('visible')
+    updateClickThrough()
+    openChat()
+  })
   addMenuButton('设置…', () => {
     menuPage = 'settings'
     showMenu(lastMenuPos.x, lastMenuPos.y)
@@ -1724,6 +1777,10 @@ function renderActionFlyoutContent(panel) {
 document.addEventListener('click', (e) => {
   if (settingsPanel.classList.contains('visible')) {
     if (!settingsPanel.contains(e.target)) closeSettings()
+    return
+  }
+  if (chatPanel.classList.contains('visible')) {
+    if (!chatPanel.contains(e.target)) closeChat()
     return
   }
   if (!menuEl.contains(e.target)) {

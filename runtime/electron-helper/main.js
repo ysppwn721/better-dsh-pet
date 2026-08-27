@@ -482,6 +482,22 @@ app.whenReady().then(() => {
       event.sender.send('pet:wake-state', true)
     }
   })
+  ipcMain.handle('pet:chat', async (_event, message) => {
+    const statusUrl = process.env.DSH_PET_STATUS_URL
+    if (!statusUrl || !message) return { ok: false, reply: '消息不能为空~' }
+    try {
+      const chatUrl = statusUrl.replace(/\/plugins\/better-dsh-pet\/status$/, '/plugins/better-dsh-pet/chat')
+      const response = await fetch(chatUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ message }),
+      })
+      const data = await response.json()
+      return data
+    } catch {
+      return { ok: false, reply: '网络开小差了，等会儿再聊吧~' }
+    }
+  })
   ipcMain.on('pet:save-config', async (_event, patch) => {
     const statusUrl = process.env.DSH_PET_STATUS_URL
     if (!statusUrl || !patch || typeof patch !== 'object') return

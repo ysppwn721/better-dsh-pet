@@ -55,4 +55,7 @@ contextBridge.exposeInMainWorld('petBridge', {
     ipcRenderer.on('pet:wake-state', listener)
     return () => ipcRenderer.removeListener('pet:wake-state', listener)
   },
+  sendChat(message) {
+    return ipcRenderer.invoke('pet:chat', message)
+  },
 })

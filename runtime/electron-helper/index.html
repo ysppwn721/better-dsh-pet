@@ -266,6 +266,96 @@
       background: transparent;
       border: 0;
     }
+    #chat-panel {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 420px;
+      height: 520px;
+      max-height: 86vh;
+      background: #fff;
+      border: 1px solid #e3e5e8;
+      border-radius: 14px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+      display: none;
+      flex-direction: column;
+      pointer-events: auto;
+      z-index: 30;
+      overflow: hidden;
+      color: #25282d;
+    }
+    #chat-panel.visible { display: flex; }
+    #chat-panel .chat-header {
+      padding: 12px 14px;
+      border-bottom: 1px solid #eee;
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #chat-panel .chat-close {
+      cursor: pointer;
+      color: #888;
+      font-size: 16px;
+      padding: 0 4px;
+    }
+    #chat-panel .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: #fafbfc;
+    }
+    #chat-panel .chat-msg {
+      max-width: 80%;
+      padding: 8px 10px;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    #chat-panel .chat-msg.user {
+      align-self: flex-end;
+      background: #4a7cff;
+      color: #fff;
+      border-bottom-right-radius: 2px;
+    }
+    #chat-panel .chat-msg.pet {
+      align-self: flex-start;
+      background: #fff;
+      border: 1px solid #e8e8e8;
+      border-bottom-left-radius: 2px;
+    }
+    #chat-panel .chat-input-row {
+      display: flex;
+      gap: 8px;
+      padding: 10px;
+      border-top: 1px solid #eee;
+      background: #fff;
+    }
+    #chat-panel .chat-input-row input {
+      flex: 1;
+      padding: 8px 10px;
+      border: 1px solid #d8d8d8;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+    }
+    #chat-panel .chat-input-row span {
+      padding: 8px 14px;
+      background: #4a7cff;
+      color: #fff;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none;
+      text-align: center;
+    }
     @media (prefers-reduced-motion: reduce) {
       video.pet-video { transition: none; }
     }
@@ -286,6 +376,7 @@
     </div>
     <div id="menu"></div>
     <div id="settings-panel"></div>
+    <div id="chat-panel"></div>
   </div>
   <script src="./renderer.js"></script>
 </body>
