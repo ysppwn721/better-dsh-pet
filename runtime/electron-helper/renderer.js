@@ -877,8 +877,10 @@ function updateClickThrough() {
     inside = inside || (lastMouse.x >= b.left && lastMouse.x <= b.right
       && lastMouse.y >= b.top && lastMouse.y <= b.bottom)
   }
-  const menuVisible = menuEl.classList.contains('visible')
-  const ignore = !inside && !dragging && !dragState.active && !menuVisible
+  const overlayVisible = menuEl.classList.contains('visible')
+    || settingsPanel.classList.contains('visible')
+    || chatPanel.classList.contains('visible')
+  const ignore = !inside && !dragging && !dragState.active && !overlayVisible
   window.petBridge.setIgnoreMouse(ignore)
 }
 
@@ -1169,6 +1171,32 @@ function renderChatPanel() {
   `
   const close = chatPanel.querySelector('.chat-close')
   close.onmousedown = (e) => { e.preventDefault(); closeChat() }
+  const header = chatPanel.querySelector('.chat-header')
+  let chatDrag = null
+  header.onmousedown = (e) => {
+    if (e.target.classList.contains('chat-close')) return
+    e.preventDefault()
+    chatDrag = {
+      startX: e.clientX,
+      startY: e.clientY,
+      left: chatPanel.offsetLeft,
+      top: chatPanel.offsetTop,
+    }
+    const onMove = (ev) => {
+      if (!chatDrag) return
+      const dx = ev.clientX - chatDrag.startX
+      const dy = ev.clientY - chatDrag.startY
+      chatPanel.style.left = Math.max(0, Math.min(window.innerWidth - 100, chatDrag.left + dx)) + 'px'
+      chatPanel.style.top = Math.max(0, Math.min(window.innerHeight - 60, chatDrag.top + dy)) + 'px'
+    }
+    const onUp = () => {
+      chatDrag = null
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
   const messagesEl = chatPanel.querySelector('.chat-messages')
   const input = chatPanel.querySelector('input')
   const send = chatPanel.querySelector('.chat-input-row span:last-child')
@@ -1209,6 +1237,9 @@ function renderChatPanel() {
 }
 function openChat() {
   renderChatPanel()
+  chatPanel.style.left = Math.max(0, Math.round((window.innerWidth - 420) / 2)) + 'px'
+  chatPanel.style.top = Math.max(0, Math.round((window.innerHeight - 520) / 2)) + 'px'
+  chatPanel.style.transform = 'none'
   chatPanel.classList.add('visible')
   window.petBridge.setIgnoreMouse(false)
 }
