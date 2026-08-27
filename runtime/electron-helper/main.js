@@ -26,6 +26,10 @@ function resolveDesktopPath() {
   const candidates = [
     process.env.DSH_PET_DESKTOP_PATH,
     process.env.DSH_DESKTOP_PATH,
+    process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, 'DeepSeek Harness', 'DSH Desktop', 'DSH Desktop.exe'),
+    process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, 'Programs', 'DeepSeek Harness', 'DSH Desktop', 'DSH Desktop.exe'),
+    process.env.ProgramFiles && path.join(process.env.ProgramFiles, 'DeepSeek Harness', 'DSH Desktop', 'DSH Desktop.exe'),
+    process.env.ProgramFiles && path.join(process.env.ProgramFiles, 'DSH Desktop', 'DSH Desktop.exe'),
     'D:\\deepseek harness\\DSH Desktop\\DSH Desktop.exe',
     'D:/deepseek harness/DSH Desktop/DSH Desktop.exe',
   ].filter(Boolean)

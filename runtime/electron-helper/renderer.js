@@ -293,36 +293,47 @@ function playIdle() {
     : []
   let next = IDLE
   let isMove = false
+  const canMove = CONFIG.walkEnabled && !CONFIG.reducedMotion
   if (order.length > 0) {
     next = order[actionOrderIndex % order.length]
     actionOrderIndex++
-    if (MOVES.includes(next) && CONFIG.walkEnabled && tryMove(next)) isMove = true
+    if (MOVES.includes(next)) {
+      if (canMove && tryMove(next)) isMove = true
+      else next = IDLE
+    }
   } else {
     // 移动频繁度 = 每次待机决策时尝试走动的概率（可关闭）。
+    // 活跃程度会缩放这个概率：quiet 更低，lively 更高。
+    const activity = CONFIG.activityLevel === 'quiet' ? 0.6 : CONFIG.activityLevel === 'lively' ? 1.4 : 1
+    const effectiveMoveChance = Math.min(100, CONFIG.moveChance * activity)
     const moveCandidate = pick(MOVES, anim)
-    if (CONFIG.walkEnabled && Math.random() * 100 < CONFIG.moveChance && tryMove(moveCandidate)) {
+    if (canMove && Math.random() * 100 < effectiveMoveChance && tryMove(moveCandidate)) {
       next = moveCandidate
       isMove = true
     } else {
       const roll = Math.random()
-      if (roll < 0.3) {
-        next = IDLE
-      } else if (roll < 0.4) {
-        next = TURN
+      if (CONFIG.activityLevel === 'quiet') {
+        if (roll < 0.5) next = IDLE
+        else if (roll < 0.6) next = TURN
+        else next = pick(usableActions, anim)
+      } else if (CONFIG.activityLevel === 'lively') {
+        if (roll < 0.15) next = IDLE
+        else if (roll < 0.3) next = TURN
+        else next = pick(usableActions, anim)
       } else {
-        next = pick(usableActions, anim)
+        if (roll < 0.3) next = IDLE
+        else if (roll < 0.4) next = TURN
+        else next = pick(usableActions, anim)
       }
     }
   }
   anim = next
   animOnce = true
   animLoop = false
+  if (isMove) currentMode = 'move'
   switchTo(next, { once: true })
-  if (isMove) {
-    currentMode = 'move'
-    // 移动驱动在视频加载完成后启动（switchTo onReady 里调用），
-    // 这样可以使用视频真实时长，避免动画还没播完就提前停下。
-  }
+  // 移动驱动在视频加载完成后启动（switchTo onReady 里调用），
+  // 这样可以使用视频真实时长，避免动画还没播完就提前停下。
   // 随机动作/走动播放时，给出与动作匹配的可爱气泡描述。
   if (next !== IDLE) {
     const copy = ACTION_COPY[next] || `大肥鱼正在${next}~`
@@ -367,7 +378,7 @@ function playDrag() {
 
 // ---------- 走动效果 ----------
 function tryMove(moveName) {
-  if (moveRef !== null || movePlan) return true
+  if (moveRef !== null || movePlan) return false
   const W = window.innerWidth
   const H = window.innerHeight
   const minX = -(HIT_BOX.x0 / 640 * size)
@@ -623,6 +634,7 @@ function feedPet() {
 }
 
 function shakePet() {
+  if (CONFIG.reducedMotion) return
   const originX = petPos.x
   const originY = petPos.y
   const offsets = [[6, 0], [-6, 0], [4, 0], [-4, 0], [2, 0], [-2, 0], [0, 0]]
@@ -658,6 +670,7 @@ function playAlarm() {
 }
 
 function startPomodoro(mode, minutes) {
+  clearIdleDelay()
   stopPomodoro()
   const durationMs = Math.max(1, minutes) * 60 * 1000
   pomodoro = { mode, endAt: Date.now() + durationMs, durationMs }
@@ -875,6 +888,7 @@ function addMenuButton(label, onClick) {
 }
 
 function showMenu(x, y) {
+  clearIdleDelay()
   lastMenuPos = { x, y }
   menuEl.innerHTML = ''
   if (menuPage === 'pomodoro') {
