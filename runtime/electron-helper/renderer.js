@@ -557,6 +557,8 @@ function scheduleNextIdle() {
     animOnce = false
     animLoop = true
     switchTo(IDLE, { loop: true })
+    // 让“动作间隔”肉眼可见：等待期间显示一个小气泡。
+    showManualBubble('休息一下~', `间隔 ${CONFIG.actionDelayMs}ms`, Math.min(CONFIG.actionDelayMs, 3000))
     idleDelayTimer = setTimeout(() => {
       idleDelayTimer = null
       playIdle()
@@ -1165,7 +1167,7 @@ function renderSettingsPage() {
     <div style="font-size:13px;font-weight:600;margin:4px 0 6px;color:#333">外观与行为</div>
     <div class="ms-field"><span>宠物宽度</span><input type="number" id="ms-petSize" min="100" max="1000" step="10" value="${CONFIG.petSize}"></div>
     <div class="ms-field"><span>移动频繁度</span><input type="range" id="ms-moveChance" min="0" max="100" step="1" value="${CONFIG.moveChance}"><em id="ms-moveChance-val">${CONFIG.moveChance}%</em></div>
-    <div class="ms-field"><span>动作间隔</span><input type="range" id="ms-actionDelayMs" min="0" max="5000" step="100" value="${CONFIG.actionDelayMs}"><em id="ms-actionDelayMs-val">${CONFIG.actionDelayMs}ms</em></div>
+    <div class="ms-field"><span>空闲动作间隔</span><input type="range" id="ms-actionDelayMs" min="0" max="5000" step="100" value="${CONFIG.actionDelayMs}"><em id="ms-actionDelayMs-val">${CONFIG.actionDelayMs}ms</em></div>
     <div class="ms-field"><span>播放速度</span><input type="range" id="ms-playbackRate" min="1" max="2" step="0.1" value="${CONFIG.playbackRate}"><em id="ms-playbackRate-val">${CONFIG.playbackRate}x</em></div>
     <div class="ms-field"><span>活跃程度</span><select id="ms-activityLevel">
       <option value="quiet" ${CONFIG.activityLevel === 'quiet' ? 'selected' : ''}>安静</option>
