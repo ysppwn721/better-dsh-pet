@@ -53,6 +53,7 @@
     "runtime/electron-helper",
     "assets/thumb",
     "assets/alarm.mp3",
+    "assets/tray-icon.png",
     "cordis.patch.yml",
     "scripts/ensure-electron.mjs",
     "scripts/download-sensevoice.mjs"

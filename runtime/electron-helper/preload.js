@@ -72,4 +72,12 @@ contextBridge.exposeInMainWorld('petBridge', {
   transcribe(wavBuffer) {
     return ipcRenderer.invoke('pet:transcribe', wavBuffer)
   },
+  checkUpdate() {
+    ipcRenderer.send('pet:check-update')
+  },
+  onUpdateResult(callback) {
+    const listener = (_event, result) => callback(result)
+    ipcRenderer.on('pet:update-result', listener)
+    return () => ipcRenderer.removeListener('pet:update-result', listener)
+  },
 })

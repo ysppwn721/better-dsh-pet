@@ -1789,6 +1789,12 @@ function renderMainMenu() {
     updateClickThrough()
     openChat()
   })
+  addMenuButton('检查更新', () => {
+    menuEl.classList.remove('visible')
+    updateClickThrough()
+    showManualBubble('正在检查更新…', '', 2000)
+    window.petBridge.checkUpdate()
+  })
   addMenuButton('设置…', () => {
     menuPage = 'settings'
     showMenu(lastMenuPos.x, lastMenuPos.y)
@@ -2231,12 +2237,27 @@ async function handleVoiceCommand(text) {
   }
 }
 
+function handleUpdateResult(result) {
+  if (!result) return
+  if (result.error) {
+    showManualBubble('检查更新失败', result.error, 3000)
+    return
+  }
+  if (result.hasUpdate) {
+    showManualBubble(`发现新版本 ${result.latest}`, `当前 ${result.current}，为你打开更新页`, 5000)
+    window.petBridge.openWebUi('https://github.com/ysppwn721/better-dsh-pet/releases')
+  } else {
+    showManualBubble('已是最新版本', `当前 ${result.current}`, 3000)
+  }
+}
+
 window.petBridge.onStatus((status) => {
   applyStatus(status)
 })
 
 window.petBridge.onVoiceResult(handleVoiceCommand)
 window.petBridge.onDictationResult(handleDictationResult)
+window.petBridge.onUpdateResult(handleUpdateResult)
 window.petBridge.onWakeState((enabled) => {
   wakeWordEnabled = enabled
 })

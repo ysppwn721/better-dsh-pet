@@ -8,7 +8,7 @@
 const { app, BrowserWindow, ipcMain, screen, shell, Tray, Menu, nativeImage, session } = require('electron')
 const path = require('node:path')
 const { spawn, execFile } = require('node:child_process')
-const { existsSync } = require('node:fs')
+const { existsSync, readFileSync } = require('node:fs')
 
 // 允许无用户手势直接播放 MP3 闹钟
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
@@ -66,7 +66,12 @@ function openDesktop() {
 
 function createTray() {
   if (tray) return
-  const icon = nativeImage.createFromDataURL('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABKSURBVDhPzY6xDQAwCMN6Wo/tn3RjMLQiEgORPBFHrDUy+5i9YDeEQgYdD4s/6EpyOsJjhb4BHqr0fTBjQB2h62Exg04IBUlWcwH8iaT0f2HaowAAAABJRU5ErkJggg==')
+  const iconPath = path.join(__dirname, '..', '..', 'assets', 'tray-icon.png')
+  let icon = nativeImage.createFromPath(iconPath)
+  if (icon.isEmpty()) {
+    // 兜底：图标文件缺失时使用内置蓝色小圆点
+    icon = nativeImage.createFromDataURL('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABKSURBVDhPzY6xDQAwCMN6Wo/tn3RjMLQiEgORPBFHrDUy+5i9YDeEQgYdD4s/6EpyOsJjhb4BHqr0fTBjQB2h62Exg04IBUlWcwH8iaT0f2HaowAAAABJRU5ErkJggg==')
+  }
   tray = new Tray(icon)
   tray.setToolTip('Better DSH Pet')
   const toggleVisible = () => {
@@ -269,6 +274,50 @@ try {
     }
     callback(text)
   })
+}
+
+function compareVersions(a, b) {
+  const pa = String(a || '').split('.').map((n) => Number(n) || 0)
+  const pb = String(b || '').split('.').map((n) => Number(n) || 0)
+  for (let i = 0; i < 3; i++) {
+    const x = pa[i] || 0
+    const y = pb[i] || 0
+    if (x !== y) return x < y ? -1 : 1
+  }
+  return 0
+}
+
+function checkForUpdate(callback) {
+  let current = '0.0.0'
+  try {
+    const pkg = JSON.parse(readFileSync(path.join(__dirname, '..', '..', 'package.json'), 'utf8'))
+    current = pkg.version || current
+  } catch {
+    // 读取失败时用 0.0.0
+  }
+  const registries = [
+    'https://registry.npmjs.org/better-dsh-pet/latest',
+    'https://registry.npmmirror.com/better-dsh-pet/latest',
+  ]
+  const tryFetch = async (index) => {
+    if (index >= registries.length) {
+      callback({ current, latest: current, hasUpdate: false, error: '无法连接更新服务器' })
+      return
+    }
+    try {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 8000)
+      const response = await fetch(registries[index], { signal: controller.signal })
+      clearTimeout(timer)
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const data = await response.json()
+      const latest = data?.version || current
+      callback({ current, latest, hasUpdate: compareVersions(latest, current) > 0, error: '' })
+    } catch {
+      await tryFetch(index + 1)
+    }
+  }
+  void tryFetch(0)
 }
 
 function sendVoiceResult(text) {
@@ -553,6 +602,13 @@ app.whenReady().then(() => {
   })
   ipcMain.on('pet:speak', (_event, text) => {
     speakText(text)
+  })
+  ipcMain.on('pet:check-update', (event) => {
+    checkForUpdate((result) => {
+      if (!event.sender.isDestroyed()) {
+        event.sender.send('pet:update-result', result)
+      }
+    })
   })
   ipcMain.on('pet:wake-word-toggle', (event) => {
     if (wakeWordProcess) {
