@@ -174,6 +174,7 @@ const bubbleEl = document.getElementById('bubble')
 const bubbleTitle = document.getElementById('bubble-title')
 const bubbleDetail = document.getElementById('bubble-detail')
 const menuEl = document.getElementById('menu')
+const settingsPanel = document.getElementById('settings-panel')
 
 // ---------- 基础尺寸 ----------
 let size = (CONFIG.petSize || 460) * CONFIG.scale
@@ -258,6 +259,7 @@ let emotion = { mood: 0, energy: 100, anxiety: 0, boredom: 0 }
 
 // ---------- 工具 ----------
 const randomBetween = (min, max) => Math.floor(min + Math.random() * (max - min))
+const parseList = (text) => String(text || '').split(/[,，]/).map((s) => s.trim()).filter(Boolean)
 const pick = (pool, exclude) => {
   const entries = exclude ? pool.filter((n) => n !== exclude) : pool
   return entries[Math.floor(Math.random() * entries.length)]
@@ -1035,6 +1037,117 @@ function renderEmotionBars(container) {
   container.appendChild(panel)
 }
 
+function renderSettingsPanelContent() {
+  const bubbleStatesText = Array.isArray(CONFIG.bubbleStates) ? CONFIG.bubbleStates.join(', ') : ''
+  settingsPanel.innerHTML = `
+    <h2>🐳 Better DSH Pet 设置</h2>
+    <div class="settings-section">
+      <h3>情绪状态</h3>
+      <div id="settings-emotion-bars"></div>
+    </div>
+    <div class="settings-section">
+      <h3>外观与行为</h3>
+      <div class="field"><label>宠物宽度</label><input type="number" id="set-petSize" min="100" max="1000" step="10" value="${CONFIG.petSize}"></div>
+      <div class="field"><label>移动频繁度</label><input type="range" id="set-moveChance" min="0" max="100" step="1" value="${CONFIG.moveChance}"><span id="set-moveChance-val">${CONFIG.moveChance}%</span></div>
+      <div class="field"><label>动作间隔</label><input type="range" id="set-actionDelayMs" min="0" max="5000" step="100" value="${CONFIG.actionDelayMs}"><span id="set-actionDelayMs-val">${CONFIG.actionDelayMs}ms</span></div>
+      <div class="field"><label>播放速度</label><input type="range" id="set-playbackRate" min="1" max="2" step="0.1" value="${CONFIG.playbackRate}"><span id="set-playbackRate-val">${CONFIG.playbackRate}x</span></div>
+      <div class="field"><label>活跃程度</label><select id="set-activityLevel">
+        <option value="quiet" ${CONFIG.activityLevel === 'quiet' ? 'selected' : ''}>安静</option>
+        <option value="normal" ${CONFIG.activityLevel === 'normal' ? 'selected' : ''}>标准</option>
+        <option value="lively" ${CONFIG.activityLevel === 'lively' ? 'selected' : ''}>活泼</option>
+      </select></div>
+      <div class="field"><label>减少动态</label><span class="checkbox-field"><input type="checkbox" id="set-reducedMotion" ${CONFIG.reducedMotion ? 'checked' : ''}> 开启</span></div>
+      <div class="field"><label>允许行走</label><span class="checkbox-field"><input type="checkbox" id="set-walkEnabled" ${CONFIG.walkEnabled ? 'checked' : ''}> 开启</span></div>
+    </div>
+    <div class="settings-section">
+      <h3>番茄钟</h3>
+      <div class="field"><label>工作时长</label><input type="number" id="set-workMinutes" min="1" max="120" step="1" value="${CONFIG.workMinutes}"></div>
+      <div class="field"><label>休息时长</label><input type="number" id="set-breakMinutes" min="1" max="60" step="1" value="${CONFIG.breakMinutes}"></div>
+    </div>
+    <div class="settings-section">
+      <h3>动作</h3>
+      <div class="field"><label>待机动作</label><textarea id="set-enabledActions" placeholder="留空=全部动作，逗号分隔">${Array.isArray(CONFIG.enabledActions) ? CONFIG.enabledActions.join(', ') : ''}</textarea></div>
+      <div class="field"><label>播放顺序</label><textarea id="set-actionOrder" placeholder="留空=随机，逗号分隔">${Array.isArray(CONFIG.actionOrder) ? CONFIG.actionOrder.join(', ') : ''}</textarea></div>
+    </div>
+    <div class="settings-section">
+      <h3>功能</h3>
+      <div class="field"><label>自动吐槽</label><span class="checkbox-field"><input type="checkbox" id="set-roastEnabled" ${CONFIG.roastEnabled ? 'checked' : ''}> 开启</span></div>
+      <div class="field"><label>气泡模式</label><select id="set-bubbleMode">
+        <option value="always" ${CONFIG.bubbleMode === 'always' ? 'selected' : ''}>常驻显示</option>
+        <option value="hidden" ${CONFIG.bubbleMode === 'hidden' ? 'selected' : ''}>完全隐藏</option>
+        <option value="custom" ${CONFIG.bubbleMode === 'custom' ? 'selected' : ''}>自定义</option>
+      </select></div>
+      <div class="field"><label>自定义气泡状态</label><textarea id="set-bubbleStates" placeholder="如 SUCCESS,ERROR,WAITING">${bubbleStatesText}</textarea></div>
+    </div>
+    <div class="actions">
+      <button id="settings-save">保存</button>
+      <button id="settings-close" class="secondary">关闭</button>
+    </div>
+  `
+  renderEmotionBars(settingsPanel.querySelector('#settings-emotion-bars'))
+
+  const bindRange = (id, valId, suffix) => {
+    const input = settingsPanel.querySelector(id)
+    const output = settingsPanel.querySelector(valId)
+    input.addEventListener('input', () => { output.textContent = `${input.value}${suffix}` })
+  }
+  bindRange('#set-moveChance', '#set-moveChance-val', '%')
+  bindRange('#set-actionDelayMs', '#set-actionDelayMs-val', 'ms')
+  bindRange('#set-playbackRate', '#set-playbackRate-val', 'x')
+
+  settingsPanel.querySelector('#settings-close').addEventListener('click', closeSettings)
+  settingsPanel.querySelector('#settings-save').addEventListener('click', saveSettingsPanel)
+}
+
+function saveSettingsPanel() {
+  const val = (id) => settingsPanel.querySelector(id)
+  const number = (id, fallback, min, max) => {
+    const raw = Number(val(id).value)
+    return Math.min(max, Math.max(min, Number.isFinite(raw) ? raw : fallback))
+  }
+  const petSize = Math.round(number('#set-petSize', CONFIG.petSize, 100, 1000) / 10) * 10
+  const moveChance = number('#set-moveChance', CONFIG.moveChance, 0, 100)
+  const actionDelayMs = number('#set-actionDelayMs', CONFIG.actionDelayMs, 0, 5000)
+  const playbackRate = number('#set-playbackRate', CONFIG.playbackRate, 1, 2)
+  const activityLevel = val('#set-activityLevel').value
+  const reducedMotion = val('#set-reducedMotion').checked
+  const walkEnabled = val('#set-walkEnabled').checked
+  const workMinutes = number('#set-workMinutes', CONFIG.workMinutes, 1, 120)
+  const breakMinutes = number('#set-breakMinutes', CONFIG.breakMinutes, 1, 60)
+  const roastEnabled = val('#set-roastEnabled').checked
+  const bubbleMode = val('#set-bubbleMode').value
+  const bubbleStates = parseList(val('#set-bubbleStates').value)
+  const enabledActions = parseList(val('#set-enabledActions').value)
+  const actionOrder = parseList(val('#set-actionOrder').value)
+
+  Object.assign(CONFIG, {
+    petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
+    reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
+    bubbleMode, bubbleStates, enabledActions, actionOrder,
+  })
+  for (const video of [videoA, videoB]) {
+    if (video) video.playbackRate = playbackRate
+  }
+  applySize()
+  window.petBridge.saveConfig({
+    petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
+    reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
+    bubbleMode, bubbleStates, enabledActions, actionOrder,
+  })
+  closeSettings()
+}
+
+function openSettings() {
+  renderSettingsPanelContent()
+  settingsPanel.classList.add('visible')
+  window.petBridge.setIgnoreMouse(false)
+}
+
+function closeSettings() {
+  settingsPanel.classList.remove('visible')
+  updateClickThrough()
+}
+
 function renderSettingsPage() {
   addMenuButton('← 返回主菜单', () => {
     menuPage = 'main'
@@ -1131,8 +1244,9 @@ function renderMainMenu() {
     window.petBridge.requestRoast()
   })
   addMenuButton('设置…', () => {
-    menuPage = 'settings'
-    showMenu(lastMenuPos.x, lastMenuPos.y)
+    menuEl.classList.remove('visible')
+    updateClickThrough()
+    openSettings()
   })
   addMenuButton('本次隐藏', () => {
     menuEl.classList.remove('visible')
@@ -1390,6 +1504,10 @@ function renderActionFlyoutContent(panel) {
 }
 
 document.addEventListener('click', (e) => {
+  if (settingsPanel.classList.contains('visible')) {
+    if (!settingsPanel.contains(e.target)) closeSettings()
+    return
+  }
   if (!menuEl.contains(e.target)) {
     menuEl.classList.remove('visible')
     updateClickThrough()
