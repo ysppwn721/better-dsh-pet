@@ -1255,6 +1255,17 @@ async function handleDictationResult(text) {
     if (chatAppendMsg) chatAppendMsg('pet', '没听清，再说一次吧~')
     return
   }
+  // 识别结果先放进输入框，让用户确认/修改后再发送，避免错字直接发给大肥鱼。
+  if (chatPanel && chatPanel.classList.contains('visible')) {
+    const input = chatPanel.querySelector('input')
+    if (input) {
+      input.value = content
+      input.focus()
+      if (chatAppendMsg) chatAppendMsg('pet', `识别到：${content}\n可修改后按回车发送`)
+      return
+    }
+  }
+  // 极端情况：聊天窗已关闭时，直接作为消息发送。
   if (chatAppendMsg) chatAppendMsg('user', content)
   chatMessages.push({ role: 'user', content })
   if (chatAppendMsg) chatAppendMsg('pet', '正在想…')
