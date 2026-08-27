@@ -145,6 +145,24 @@ const EMOTION_BUBBLES = {
   anxious: ['有点小紧张…', '这个任务没问题吧？', '别急别急，我在想…'],
   bored: ['好无聊啊…', '有没有鱼干吃？', '什么时候有新任务呀…'],
 }
+const EMOTION_BAR_META = [
+  { key: 'mood', label: '心情', color: '#ff6b6b', format: (v) => `${v > 0 ? '+' : ''}${Math.round(v)}` },
+  { key: 'energy', label: '精力', color: '#4ecdc4', format: (v) => `${Math.round(v)}` },
+  { key: 'anxiety', label: '焦虑', color: '#f9ca24', format: (v) => `${Math.round(v)}` },
+  { key: 'boredom', label: '无聊', color: '#a29bfe', format: (v) => `${Math.round(v)}` },
+]
+// 互动/状态对情绪的具体数值（便于后续在 UI 里展示“+12 精力”这类反馈）。
+const EMOTION_DELTAS = {
+  click: { mood: 6, energy: 3, anxiety: -3, boredom: -4 },
+  feed: { mood: 12, energy: 10, anxiety: -5, boredom: -8 },
+  pomodoro: { mood: 18, energy: 8, anxiety: -6, boredom: -10 },
+  stateIdle: { mood: -1, energy: -1, anxiety: -2, boredom: 3 },
+  stateThinking: { mood: 0, energy: -2, anxiety: 2, boredom: -2 },
+  stateWorking: { mood: 1, energy: -3, anxiety: 0, boredom: -3 },
+  stateWaiting: { mood: -1, energy: -1, anxiety: 3, boredom: 2 },
+  stateSuccess: { mood: 12, energy: 5, anxiety: -8, boredom: -10 },
+  stateError: { mood: -10, energy: -4, anxiety: 10, boredom: -4 },
+}
 
 // ---------- DOM ----------
 const rootEl = document.getElementById('pet-root')
@@ -263,32 +281,14 @@ function dominantEmotion() {
 }
 
 function applyStateEmotion(state) {
-  switch (state) {
-    case 'IDLE':
-      updateEmotion({ mood: -1, energy: -1, anxiety: -2, boredom: 3 })
-      break
-    case 'THINKING':
-      updateEmotion({ mood: 0, energy: -2, anxiety: 2, boredom: -2 })
-      break
-    case 'WORKING':
-      updateEmotion({ mood: 1, energy: -3, anxiety: 0, boredom: -3 })
-      break
-    case 'WAITING':
-      updateEmotion({ mood: -1, energy: -1, anxiety: 3, boredom: 2 })
-      break
-    case 'SUCCESS':
-      updateEmotion({ mood: 12, energy: 5, anxiety: -8, boredom: -10 })
-      break
-    case 'ERROR':
-      updateEmotion({ mood: -10, energy: -4, anxiety: 10, boredom: -4 })
-      break
-  }
+  const key = `state${state}`
+  const delta = EMOTION_DELTAS[key]
+  if (delta) updateEmotion(delta)
 }
 
 function applyInteractionEmotion(kind) {
-  if (kind === 'click') updateEmotion({ mood: 5, energy: 2, anxiety: -2, boredom: -3 })
-  else if (kind === 'feed') updateEmotion({ mood: 10, energy: 8, anxiety: -3, boredom: -5 })
-  else if (kind === 'pomodoro') updateEmotion({ mood: 15, energy: 6, anxiety: -5, boredom: -8 })
+  const delta = EMOTION_DELTAS[kind]
+  if (delta) updateEmotion(delta)
 }
 
 function pickEmotionAction(usableActions, exclude) {
@@ -1006,7 +1006,33 @@ function showMenu(x, y) {
   window.petBridge.setIgnoreMouse(false)
 }
 
+function renderEmotionBars(container) {
+  const panel = document.createElement('div')
+  panel.style.cssText = 'padding:8px 10px;background:#f7f8fa;border-radius:10px;margin-bottom:6px;display:grid;gap:4px'
+  for (const meta of EMOTION_BAR_META) {
+    const row = document.createElement('div')
+    row.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:11px'
+    const label = document.createElement('span')
+    label.textContent = meta.label
+    label.style.cssText = 'width:28px;color:#555'
+    const barWrap = document.createElement('div')
+    barWrap.style.cssText = 'flex:1;height:8px;background:#e8e8e8;border-radius:4px;overflow:hidden'
+    const bar = document.createElement('div')
+    const raw = emotion[meta.key]
+    const percent = meta.key === 'mood' ? (raw + 100) / 2 : raw
+    bar.style.cssText = `width:${Math.max(0, Math.min(100, percent))}%;height:100%;background:${meta.color};transition:width .3s`
+    barWrap.appendChild(bar)
+    const value = document.createElement('span')
+    value.textContent = meta.format(raw)
+    value.style.cssText = 'width:34px;text-align:right;color:#333'
+    row.append(label, barWrap, value)
+    panel.appendChild(row)
+  }
+  container.appendChild(panel)
+}
+
 function renderMainMenu() {
+  renderEmotionBars(menuEl)
   addMenuButton('喂食', () => {
     menuEl.classList.remove('visible')
     updateClickThrough()
