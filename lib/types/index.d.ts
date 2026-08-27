@@ -64,6 +64,12 @@ export interface Config {
     voiceEnabled?: boolean;
     /** 启动桌宠时自动开启语音唤醒（麦克风）。默认 false。 */
     voiceWakeAutoStart?: boolean;
+    /** 语音断句静音时长（毫秒）。默认 1200。 */
+    voiceSilenceMs?: number;
+    /** 语音识别后自动发送。默认 true。 */
+    voiceAutoSend?: boolean;
+    /** 闲聊时说“大肥鱼”自动开始录音。默认 true。 */
+    voiceAutoRecord?: boolean;
     /** 旧版 /pet 路由的 full 资源根目录。 */
     fullRoot?: string;
     /** Helper 进程选项。 */

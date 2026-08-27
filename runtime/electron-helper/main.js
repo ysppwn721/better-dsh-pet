@@ -455,6 +455,9 @@ function createWindow() {
       playbackRate: process.env.DSH_PET_PLAYBACK_RATE || '1',
       voiceEnabled: process.env.DSH_PET_VOICE_ENABLED === '0' ? '0' : '1',
       voiceWakeAutoStart: process.env.DSH_PET_VOICE_WAKE_AUTO_START === '1' ? '1' : '0',
+      voiceSilenceMs: process.env.DSH_PET_VOICE_SILENCE_MS || '1200',
+      voiceAutoSend: process.env.DSH_PET_VOICE_AUTO_SEND === '0' ? '0' : '1',
+      voiceAutoRecord: process.env.DSH_PET_VOICE_AUTO_RECORD === '0' ? '0' : '1',
     },
   }).then(() => {
     startPolling()

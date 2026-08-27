@@ -43,3 +43,6 @@
         playbackRate: 1           # 动画播放速度（1.0x～2.0x）
         voiceEnabled: true        # 是否启用语音功能（麦克风）
         voiceWakeAutoStart: false # 启动桌宠时自动开启语音唤醒（麦克风）
+        voiceSilenceMs: 1200      # 语音断句静音时长（毫秒）
+        voiceAutoSend: true       # 语音识别后自动发送
+        voiceAutoRecord: true     # 闲聊时说“大肥鱼”自动开始录音

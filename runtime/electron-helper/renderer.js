@@ -28,6 +28,9 @@ const CONFIG = {
   playbackRate: Number(params.get('playbackRate') || '1'),
   voiceEnabled: params.get('voiceEnabled') !== '0',
   voiceWakeAutoStart: params.get('voiceWakeAutoStart') === '1',
+  voiceSilenceMs: Number(params.get('voiceSilenceMs') || '1200'),
+  voiceAutoSend: params.get('voiceAutoSend') !== '0',
+  voiceAutoRecord: params.get('voiceAutoRecord') !== '0',
 }
 
 // ---------- 资源根 ----------
@@ -1346,12 +1349,13 @@ async function startSenseRecording() {
       hasVoice = true
       lastVoice = Date.now()
     }
-    // 自动断句：检测到人声后，静音超过 1.2 秒自动停止并转写
-    if (hasVoice && !autoStopped && Date.now() - lastVoice > 1200 && Date.now() - startTime > 800) {
+    // 自动断句：检测到人声后，静音超过设定时长自动停止并转写
+    const silenceMs = CONFIG.voiceSilenceMs || 1200
+    if (hasVoice && !autoStopped && Date.now() - lastVoice > silenceMs && Date.now() - startTime > 800) {
       autoStopped = true
       scriptNode.onaudioprocess = null
       setTimeout(() => {
-        if (senseRecording) void stopSenseRecording(true)
+        if (senseRecording) void stopSenseRecording(CONFIG.voiceAutoSend !== false)
       }, 0)
     }
   }
@@ -1475,6 +1479,9 @@ function renderSettingsPage() {
     <label class="ms-check"><input type="checkbox" id="ms-voiceEnabled" ${CONFIG.voiceEnabled !== false ? 'checked' : ''}> 启用语音功能（麦克风）</label>
     <label class="ms-check"><input type="checkbox" id="ms-voiceWakeNow" ${wakeWordEnabled ? 'checked' : ''}> 开启语音唤醒（麦克风，立即生效）</label>
     <label class="ms-check"><input type="checkbox" id="ms-voiceWakeAutoStart" ${CONFIG.voiceWakeAutoStart ? 'checked' : ''}> 启动时自动开启语音唤醒</label>
+    <div class="ms-field"><span>断句静音</span><input type="range" id="ms-voiceSilenceMs" min="300" max="5000" step="100" value="${CONFIG.voiceSilenceMs}"><em id="ms-voiceSilenceMs-val">${CONFIG.voiceSilenceMs}ms</em></div>
+    <label class="ms-check"><input type="checkbox" id="ms-voiceAutoSend" ${CONFIG.voiceAutoSend !== false ? 'checked' : ''}> 语音识别后自动发送</label>
+    <label class="ms-check"><input type="checkbox" id="ms-voiceAutoRecord" ${CONFIG.voiceAutoRecord !== false ? 'checked' : ''}> 闲聊时说“大肥鱼”自动录音</label>
     <div class="ms-field"><span>气泡模式</span><span id="ms-bubbleMode" class="ms-seg"></span></div>
     <div class="ms-field"><span>气泡状态</span><textarea id="ms-bubbleStates" placeholder="SUCCESS,ERROR,WAITING">${bubbleStatesText}</textarea></div>
   `
@@ -1488,6 +1495,7 @@ function renderSettingsPage() {
   bindRange('#ms-moveChance', '#ms-moveChance-val', '%')
   bindRange('#ms-actionDelayMs', '#ms-actionDelayMs-val', 'ms')
   bindRange('#ms-playbackRate', '#ms-playbackRate-val', 'x')
+  bindRange('#ms-voiceSilenceMs', '#ms-voiceSilenceMs-val', 'ms')
 
   const renderSeg = (container, name, options, current, onChange) => {
     container.innerHTML = ''
@@ -1644,6 +1652,9 @@ function renderSettingsPage() {
     const roastEnabled = val('#ms-roastEnabled').checked
     const voiceEnabled = val('#ms-voiceEnabled').checked
     const voiceWakeAutoStart = val('#ms-voiceWakeAutoStart').checked
+    const voiceSilenceMs = number('#ms-voiceSilenceMs', CONFIG.voiceSilenceMs, 300, 5000)
+    const voiceAutoSend = val('#ms-voiceAutoSend').checked
+    const voiceAutoRecord = val('#ms-voiceAutoRecord').checked
     const bubbleStates = parseList(val('#ms-bubbleStates').value)
     const finalEnabledActions = enabledActions.length === ACTS.length ? [] : enabledActions.slice()
     const finalActionOrder = actionOrder.slice()
@@ -1652,6 +1663,9 @@ function renderSettingsPage() {
       reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
       voiceEnabled,
       voiceWakeAutoStart,
+      voiceSilenceMs,
+      voiceAutoSend,
+      voiceAutoRecord,
       bubbleMode, bubbleStates, enabledActions: finalEnabledActions, actionOrder: finalActionOrder,
     })
     if (!voiceEnabled && wakeWordEnabled) {
@@ -1667,6 +1681,9 @@ function renderSettingsPage() {
       reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
       voiceEnabled,
       voiceWakeAutoStart,
+      voiceSilenceMs,
+      voiceAutoSend,
+      voiceAutoRecord,
       bubbleMode, bubbleStates, enabledActions: finalEnabledActions, actionOrder: finalActionOrder,
     })
     menuPage = 'main'
@@ -2058,6 +2075,9 @@ function applyStatus(incoming) {
     CONFIG.playbackRate = Number(incoming.config.playbackRate) || CONFIG.playbackRate
     CONFIG.voiceEnabled = incoming.config.voiceEnabled !== false
     CONFIG.voiceWakeAutoStart = incoming.config.voiceWakeAutoStart === true
+    CONFIG.voiceSilenceMs = Number(incoming.config.voiceSilenceMs) ?? CONFIG.voiceSilenceMs
+    CONFIG.voiceAutoSend = incoming.config.voiceAutoSend !== false
+    CONFIG.voiceAutoRecord = incoming.config.voiceAutoRecord !== false
     CONFIG.scale = Number(incoming.config.scale) || CONFIG.scale
     // 播放速度变化立即作用到当前/备用视频。
     for (const video of [videoA, videoB]) {
@@ -2145,8 +2165,8 @@ async function handleVoiceCommand(text) {
     showManualBubble('没听清，再说一次吧~', '', 2500)
     return
   }
-  // 闲聊框打开时，只说“大肥鱼”就自动开始录音
-  if ((command === '大肥鱼' || command === '嗨大肥鱼') && chatPanel.classList.contains('visible')) {
+  // 闲聊框打开时，只说“大肥鱼”就自动开始录音（可关闭）
+  if (CONFIG.voiceAutoRecord !== false && (command === '大肥鱼' || command === '嗨大肥鱼') && chatPanel.classList.contains('visible')) {
     if (!senseRecording) {
       showManualBubble('我在，请说~', '', 1500)
       try {

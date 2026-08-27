@@ -42,6 +42,9 @@ export interface Config {
     playbackRate?: number;
     voiceEnabled?: boolean;
     voiceWakeAutoStart?: boolean;
+    voiceSilenceMs?: number;
+    voiceAutoSend?: boolean;
+    voiceAutoRecord?: boolean;
 }
 
 /**
