@@ -26,6 +26,7 @@ const CONFIG = {
   moveChance: Number(params.get('moveChance') || '20'),
   actionDelayMs: Number(params.get('actionDelayMs') || '0'),
   playbackRate: Number(params.get('playbackRate') || '1'),
+  voiceWakeAutoStart: params.get('voiceWakeAutoStart') === '1',
 }
 
 // ---------- 资源根 ----------
@@ -1188,6 +1189,8 @@ function renderSettingsPage() {
     <div class="ms-field" style="align-items:flex-start"><span>可选动作</span><span id="ms-actionOrderList" class="ms-list"></span></div>
     <div style="font-size:13px;font-weight:600;margin:8px 0 6px;color:#333">功能</div>
     <label class="ms-check"><input type="checkbox" id="ms-roastEnabled" ${CONFIG.roastEnabled ? 'checked' : ''}> 自动吐槽</label>
+    <label class="ms-check"><input type="checkbox" id="ms-voiceWakeNow" ${wakeWordEnabled ? 'checked' : ''}> 开启语音唤醒（麦克风，立即生效）</label>
+    <label class="ms-check"><input type="checkbox" id="ms-voiceWakeAutoStart" ${CONFIG.voiceWakeAutoStart ? 'checked' : ''}> 启动时自动开启语音唤醒</label>
     <div class="ms-field"><span>气泡模式</span><span id="ms-bubbleMode" class="ms-seg"></span></div>
     <div class="ms-field"><span>气泡状态</span><textarea id="ms-bubbleStates" placeholder="SUCCESS,ERROR,WAITING">${bubbleStatesText}</textarea></div>
   `
@@ -1333,6 +1336,13 @@ function renderSettingsPage() {
     { value: 'custom', label: '自定义' },
   ], bubbleMode, (value) => { bubbleMode = value })
 
+  const voiceWakeNow = form.querySelector('#ms-voiceWakeNow')
+  voiceWakeNow.addEventListener('change', () => {
+    window.petBridge.toggleWakeWord()
+    wakeWordEnabled = voiceWakeNow.checked
+    showManualBubble(voiceWakeNow.checked ? '语音唤醒已开启' : '语音唤醒已关闭', voiceWakeNow.checked ? '说“大肥鱼+指令”' : '', 2500)
+  })
+
   addMenuButton('保存', () => {
     const val = (id) => form.querySelector(id)
     const number = (id, fallback, min, max) => {
@@ -1348,12 +1358,14 @@ function renderSettingsPage() {
     const workMinutes = number('#ms-workMinutes', CONFIG.workMinutes, 1, 120)
     const breakMinutes = number('#ms-breakMinutes', CONFIG.breakMinutes, 1, 60)
     const roastEnabled = val('#ms-roastEnabled').checked
+    const voiceWakeAutoStart = val('#ms-voiceWakeAutoStart').checked
     const bubbleStates = parseList(val('#ms-bubbleStates').value)
     const finalEnabledActions = enabledActions.length === ACTS.length ? [] : enabledActions.slice()
     const finalActionOrder = actionOrder.slice()
     Object.assign(CONFIG, {
       petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
       reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
+      voiceWakeAutoStart,
       bubbleMode, bubbleStates, enabledActions: finalEnabledActions, actionOrder: finalActionOrder,
     })
     for (const video of [videoA, videoB]) {
@@ -1363,6 +1375,7 @@ function renderSettingsPage() {
     window.petBridge.saveConfig({
       petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
       reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
+      voiceWakeAutoStart,
       bubbleMode, bubbleStates, enabledActions: finalEnabledActions, actionOrder: finalActionOrder,
     })
     menuPage = 'main'
@@ -1740,6 +1753,7 @@ function applyStatus(incoming) {
     CONFIG.moveChance = Number(incoming.config.moveChance) ?? CONFIG.moveChance
     CONFIG.actionDelayMs = Number(incoming.config.actionDelayMs) ?? CONFIG.actionDelayMs
     CONFIG.playbackRate = Number(incoming.config.playbackRate) || CONFIG.playbackRate
+    CONFIG.voiceWakeAutoStart = incoming.config.voiceWakeAutoStart === true
     CONFIG.scale = Number(incoming.config.scale) || CONFIG.scale
     // 播放速度变化立即作用到当前/备用视频。
     for (const video of [videoA, videoB]) {
@@ -1865,6 +1879,10 @@ window.petBridge.onWakeState((enabled) => {
 })
 
 // ---------- 启动 ----------
+if (CONFIG.voiceWakeAutoStart && !wakeWordEnabled) {
+  window.petBridge.toggleWakeWord()
+  wakeWordEnabled = true
+}
 playIdle()
 updateBubble()
 updateClickThrough()

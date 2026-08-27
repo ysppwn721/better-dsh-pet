@@ -40,6 +40,7 @@ export interface Config {
     moveChance?: number;
     actionDelayMs?: number;
     playbackRate?: number;
+    voiceWakeAutoStart?: boolean;
 }
 
 /**
