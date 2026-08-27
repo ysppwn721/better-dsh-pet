@@ -1432,6 +1432,12 @@ function renderMainMenu() {
     updateClickThrough()
     window.petBridge.requestRoast()
   })
+  addMenuButton('语音控制', () => {
+    menuEl.classList.remove('visible')
+    updateClickThrough()
+    showManualBubble('我在听…请说指令', '例如：开始番茄钟 / 喂食 / 余额', 4000)
+    window.petBridge.startVoice()
+  })
   addMenuButton('设置…', () => {
     menuPage = 'settings'
     showMenu(lastMenuPos.x, lastMenuPos.y)
@@ -1804,9 +1810,45 @@ function applyStatus(incoming) {
   }
 }
 
+function handleVoiceCommand(text) {
+  const command = String(text || '').trim()
+  if (!command) {
+    showManualBubble('没听清，再说一次吧~', '', 2500)
+    return
+  }
+  if (command.includes('开始') && command.includes('番茄钟')) {
+    startPomodoro('work', CONFIG.workMinutes)
+    showManualBubble('收到，开始番茄钟~', `${CONFIG.workMinutes} 分钟`, 3000)
+  } else if (command.includes('休息')) {
+    startPomodoro('break', CONFIG.breakMinutes)
+    showManualBubble('收到，开始休息~', `${CONFIG.breakMinutes} 分钟`, 3000)
+  } else if (command.includes('停止') && command.includes('番茄钟')) {
+    stopPomodoro()
+    showManualBubble('番茄钟已停止~', '', 2500)
+  } else if (command.includes('喂食')) {
+    feedPet()
+  } else if (command.includes('隐藏')) {
+    window.petBridge.hide()
+  } else if (command.includes('关闭')) {
+    window.petBridge.close('user')
+  } else if (command.includes('余额')) {
+    window.petBridge.refreshBalance()
+    showManualBubble('正在刷新余额~', '', 2000)
+  } else if (command.includes('吐槽')) {
+    window.petBridge.requestRoast()
+  } else if (command.includes('设置')) {
+    menuPage = 'settings'
+    showMenu(lastMenuPos.x, lastMenuPos.y)
+  } else {
+    showManualBubble(`你说的是“${command}”？我还没学会~`, '', 3000)
+  }
+}
+
 window.petBridge.onStatus((status) => {
   applyStatus(status)
 })
+
+window.petBridge.onVoiceResult(handleVoiceCommand)
 
 // ---------- 启动 ----------
 playIdle()

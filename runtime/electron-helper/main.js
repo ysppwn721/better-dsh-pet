@@ -226,6 +226,50 @@ function startFullscreenWatchdog() {
   if (fullscreenCheckTimer.unref) fullscreenCheckTimer.unref()
 }
 
+function startVoiceRecognition(callback) {
+  const script = `
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+Add-Type -AssemblyName System.Speech
+try {
+  $culture = [System.Globalization.CultureInfo]::GetCultureInfo('zh-CN')
+  $recognizer = New-Object System.Speech.Recognition.SpeechRecognitionEngine($culture)
+  $recognizer.SetInputToDefaultAudioDevice()
+  $choices = New-Object System.Speech.Recognition.Choices
+  $choices.Add('开始番茄钟')
+  $choices.Add('开始休息')
+  $choices.Add('停止番茄钟')
+  $choices.Add('喂食')
+  $choices.Add('隐藏')
+  $choices.Add('关闭')
+  $choices.Add('余额')
+  $choices.Add('吐槽')
+  $choices.Add('设置')
+  $grammar = New-Object System.Speech.Recognition.Grammar($choices)
+  $recognizer.LoadGrammar($grammar)
+  $result = $recognizer.Recognize()
+  if ($result -ne $null) { $result.Text } else { '' }
+} catch {
+  'ERROR: ' + $_.Exception.Message
+}
+`
+  execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+    timeout: 15000,
+    windowsHide: true,
+    encoding: 'utf8',
+  }, (error, stdout) => {
+    if (error) {
+      callback('')
+      return
+    }
+    const text = String(stdout || '').trim()
+    if (text.startsWith('ERROR:')) {
+      callback('')
+      return
+    }
+    callback(text)
+  })
+}
+
 function createWindow() {
   const scale = Number(process.env.DSH_PET_SCALE || '1')
   const bubbleScale = Number(process.env.DSH_PET_BUBBLE_SCALE || '1')
@@ -349,6 +393,13 @@ app.whenReady().then(() => {
   })
   ipcMain.on('pet:beep', () => {
     try { shell.beep() } catch { /* 系统不支持时忽略 */ }
+  })
+  ipcMain.on('pet:voice-start', (event) => {
+    startVoiceRecognition((text) => {
+      if (!event.sender.isDestroyed()) {
+        event.sender.send('pet:voice-result', text || '')
+      }
+    })
   })
   ipcMain.on('pet:save-config', async (_event, patch) => {
     const statusUrl = process.env.DSH_PET_STATUS_URL

@@ -39,4 +39,12 @@ contextBridge.exposeInMainWorld('petBridge', {
   refreshBalance() {
     ipcRenderer.send('pet:refresh-balance')
   },
+  startVoice() {
+    ipcRenderer.send('pet:voice-start')
+  },
+  onVoiceResult(callback) {
+    const listener = (_event, result) => callback(result)
+    ipcRenderer.on('pet:voice-result', listener)
+    return () => ipcRenderer.removeListener('pet:voice-result', listener)
+  },
 })
