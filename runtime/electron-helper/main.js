@@ -7,7 +7,7 @@
  */
 const { app, BrowserWindow, ipcMain, screen, shell, Tray, Menu, nativeImage } = require('electron')
 const path = require('node:path')
-const { spawn } = require('node:child_process')
+const { spawn, execFile } = require('node:child_process')
 const { existsSync } = require('node:fs')
 
 // 允许无用户手势直接播放 MP3 闹钟
@@ -21,6 +21,9 @@ app.disableHardwareAcceleration()
 let mainWindow = null
 let pollTimer = null
 let tray = null
+let userHidden = false
+let fullscreenHidden = false
+let fullscreenCheckTimer = null
 
 function setClickThrough(ignore) {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -67,8 +70,13 @@ function createTray() {
   tray.setToolTip('Better DSH Pet')
   const toggleVisible = () => {
     if (!mainWindow || mainWindow.isDestroyed()) return
-    if (mainWindow.isVisible()) mainWindow.hide()
-    else mainWindow.show()
+    if (mainWindow.isVisible()) {
+      mainWindow.hide()
+      userHidden = true
+    } else {
+      mainWindow.show()
+      userHidden = false
+    }
   }
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: '显示 / 隐藏桌宠', click: toggleVisible },
@@ -86,18 +94,94 @@ function createTray() {
 // Windows 上资源管理器重启、分辨率/DPI 变化、休眠唤醒等可能让置顶丢失，
 // 借鉴 dsh-pet-indesktop 的“置顶看门狗”：定期重新置顶。
 function startTopmostWatchdog() {
-  setInterval(() => {
+  const timer = setInterval(() => {
     if (!mainWindow || mainWindow.isDestroyed()) return
-    if (!mainWindow.isAlwaysOnTop()) {
-      mainWindow.setAlwaysOnTop(true, 'screen-saver')
-    }
     mainWindow.setAlwaysOnTop(true, 'screen-saver')
   }, 30000)
+  if (timer.unref) timer.unref()
   if (mainWindow) {
     mainWindow.on('show', () => {
       mainWindow.setAlwaysOnTop(true, 'screen-saver')
     })
   }
+}
+
+// 全屏自动隐身：检测前台窗口是否铺满某块屏幕。
+// 用 PowerShell 调 user32 拿前台窗口矩形，避免引入额外原生依赖。
+function getForegroundWindowRect(callback) {
+  const script = `
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class Win32Foreground {
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
+  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
+  public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
+}
+"@
+$h = [Win32Foreground]::GetForegroundWindow()
+if ($h -eq [IntPtr]::Zero) { 'none'; exit }
+if (-not [Win32Foreground]::IsWindowVisible($h)) { 'none'; exit }
+$r = New-Object Win32Foreground+RECT
+[Win32Foreground]::GetWindowRect($h, [ref]$r) | Out-Null
+"$($r.Left),$($r.Top),$($r.Right),$($r.Bottom)"
+`
+  execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+    timeout: 3000,
+    windowsHide: true,
+  }, (error, stdout) => {
+    if (error) {
+      callback(null)
+      return
+    }
+    const text = String(stdout || '').trim()
+    if (!text || text === 'none') {
+      callback(null)
+      return
+    }
+    const parts = text.split(',').map((n) => Number(n.trim()))
+    if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) {
+      callback(null)
+      return
+    }
+    callback({ x: parts[0], y: parts[1], width: parts[2] - parts[0], height: parts[3] - parts[1] })
+  })
+}
+
+function isFullscreenRect(rect) {
+  if (!rect) return false
+  const displays = screen.getAllDisplays()
+  return displays.some((display) => {
+    const wa = display.workArea
+    const tolerance = 2
+    return rect.x <= wa.x + tolerance
+      && rect.y <= wa.y + tolerance
+      && rect.x + rect.width >= wa.x + wa.width - tolerance
+      && rect.y + rect.height >= wa.y + wa.height - tolerance
+  })
+}
+
+function checkFullscreenAndHide() {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  getForegroundWindowRect((rect) => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    const fullscreen = isFullscreenRect(rect)
+    if (fullscreen && !fullscreenHidden) {
+      fullscreenHidden = true
+      mainWindow.hide()
+    } else if (!fullscreen && fullscreenHidden && !userHidden) {
+      fullscreenHidden = false
+      mainWindow.show()
+      mainWindow.setAlwaysOnTop(true, 'screen-saver')
+    }
+  })
+}
+
+function startFullscreenWatchdog() {
+  checkFullscreenAndHide()
+  fullscreenCheckTimer = setInterval(checkFullscreenAndHide, 2000)
+  if (fullscreenCheckTimer.unref) fullscreenCheckTimer.unref()
 }
 
 function createWindow() {
@@ -203,11 +287,13 @@ app.whenReady().then(() => {
   createWindow()
   createTray()
   startTopmostWatchdog()
+  startFullscreenWatchdog()
   ipcMain.on('pet:closed', (_event, reason) => {
     void notifyHostClosed().finally(() => app.quit())
   })
   ipcMain.on('pet:hide', () => {
     if (mainWindow) mainWindow.hide()
+    userHidden = true
   })
   ipcMain.on('pet:open-webui', (_event, url) => {
     if (url) shell.openExternal(String(url)).catch(() => {})
