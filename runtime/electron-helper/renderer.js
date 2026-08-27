@@ -1161,34 +1161,33 @@ function renderSettingsPage() {
     showMenu(lastMenuPos.x, lastMenuPos.y)
   })
   const bubbleStatesText = Array.isArray(CONFIG.bubbleStates) ? CONFIG.bubbleStates.join(', ') : ''
+  let activityLevel = CONFIG.activityLevel
+  let bubbleMode = CONFIG.bubbleMode
+  let enabledActions = CONFIG.enabledActions.length ? CONFIG.enabledActions.slice() : ACTS.slice()
+  let actionOrder = CONFIG.actionOrder.filter((name) => ACTS.includes(name))
+
   const form = document.createElement('div')
-  form.style.cssText = 'min-width:300px;padding:2px 2px 6px'
+  form.style.cssText = 'min-width:320px;padding:2px 2px 6px'
   form.innerHTML = `
     <div style="font-size:13px;font-weight:600;margin:4px 0 6px;color:#333">外观与行为</div>
     <div class="ms-field"><span>宠物宽度</span><input type="number" id="ms-petSize" min="100" max="1000" step="10" value="${CONFIG.petSize}"></div>
     <div class="ms-field"><span>移动频繁度</span><input type="range" id="ms-moveChance" min="0" max="100" step="1" value="${CONFIG.moveChance}"><em id="ms-moveChance-val">${CONFIG.moveChance}%</em></div>
     <div class="ms-field"><span>空闲动作间隔</span><input type="range" id="ms-actionDelayMs" min="0" max="5000" step="100" value="${CONFIG.actionDelayMs}"><em id="ms-actionDelayMs-val">${CONFIG.actionDelayMs}ms</em></div>
     <div class="ms-field"><span>播放速度</span><input type="range" id="ms-playbackRate" min="1" max="2" step="0.1" value="${CONFIG.playbackRate}"><em id="ms-playbackRate-val">${CONFIG.playbackRate}x</em></div>
-    <div class="ms-field"><span>活跃程度</span><select id="ms-activityLevel">
-      <option value="quiet" ${CONFIG.activityLevel === 'quiet' ? 'selected' : ''}>安静</option>
-      <option value="normal" ${CONFIG.activityLevel === 'normal' ? 'selected' : ''}>标准</option>
-      <option value="lively" ${CONFIG.activityLevel === 'lively' ? 'selected' : ''}>活泼</option>
-    </select></div>
+    <div class="ms-field"><span>活跃程度</span><span id="ms-activityLevel" class="ms-seg"></span></div>
     <label class="ms-check"><input type="checkbox" id="ms-reducedMotion" ${CONFIG.reducedMotion ? 'checked' : ''}> 减少动态</label>
     <label class="ms-check"><input type="checkbox" id="ms-walkEnabled" ${CONFIG.walkEnabled ? 'checked' : ''}> 允许行走</label>
     <div style="font-size:13px;font-weight:600;margin:8px 0 6px;color:#333">番茄钟</div>
     <div class="ms-field"><span>工作时长</span><input type="number" id="ms-workMinutes" min="1" max="120" step="1" value="${CONFIG.workMinutes}"></div>
     <div class="ms-field"><span>休息时长</span><input type="number" id="ms-breakMinutes" min="1" max="60" step="1" value="${CONFIG.breakMinutes}"></div>
     <div style="font-size:13px;font-weight:600;margin:8px 0 6px;color:#333">动作</div>
-    <div class="ms-field"><span>待机动作</span><textarea id="ms-enabledActions" placeholder="留空=全部，逗号分隔">${Array.isArray(CONFIG.enabledActions) ? CONFIG.enabledActions.join(', ') : ''}</textarea></div>
-    <div class="ms-field"><span>播放顺序</span><textarea id="ms-actionOrder" placeholder="留空=随机，逗号分隔">${Array.isArray(CONFIG.actionOrder) ? CONFIG.actionOrder.join(', ') : ''}</textarea></div>
+    <div class="ms-field" style="align-items:flex-start"><span>待机动作</span><span id="ms-enabledActionsList" class="ms-list"></span></div>
+    <div style="font-size:12px;color:#888;margin:2px 0 4px">播放顺序：按勾选顺序排列，可用 ↑↓ 调整</div>
+    <div id="ms-orderPreview" class="ms-order-preview"></div>
+    <div class="ms-field" style="align-items:flex-start"><span>可选动作</span><span id="ms-actionOrderList" class="ms-list"></span></div>
     <div style="font-size:13px;font-weight:600;margin:8px 0 6px;color:#333">功能</div>
     <label class="ms-check"><input type="checkbox" id="ms-roastEnabled" ${CONFIG.roastEnabled ? 'checked' : ''}> 自动吐槽</label>
-    <div class="ms-field"><span>气泡模式</span><select id="ms-bubbleMode">
-      <option value="always" ${CONFIG.bubbleMode === 'always' ? 'selected' : ''}>常驻显示</option>
-      <option value="hidden" ${CONFIG.bubbleMode === 'hidden' ? 'selected' : ''}>完全隐藏</option>
-      <option value="custom" ${CONFIG.bubbleMode === 'custom' ? 'selected' : ''}>自定义</option>
-    </select></div>
+    <div class="ms-field"><span>气泡模式</span><span id="ms-bubbleMode" class="ms-seg"></span></div>
     <div class="ms-field"><span>气泡状态</span><textarea id="ms-bubbleStates" placeholder="SUCCESS,ERROR,WAITING">${bubbleStatesText}</textarea></div>
   `
   menuEl.appendChild(form)
@@ -1202,6 +1201,127 @@ function renderSettingsPage() {
   bindRange('#ms-actionDelayMs', '#ms-actionDelayMs-val', 'ms')
   bindRange('#ms-playbackRate', '#ms-playbackRate-val', 'x')
 
+  const renderSeg = (container, options, current, onChange) => {
+    container.innerHTML = ''
+    for (const option of options) {
+      const button = document.createElement('button')
+      button.type = 'button'
+      button.textContent = option.label
+      button.style.cssText = `padding:4px 8px;border:1px solid #d8d8d8;border-radius:6px;background:${option.value === current ? '#4a7cff' : '#fff'};color:${option.value === current ? '#fff' : '#333'};font-size:12px;cursor:pointer`
+      button.addEventListener('click', () => {
+        onChange(option.value)
+        renderSeg(container, options, option.value, onChange)
+      })
+      container.appendChild(button)
+    }
+  }
+  renderSeg(form.querySelector('#ms-activityLevel'), [
+    { value: 'quiet', label: '安静' },
+    { value: 'normal', label: '标准' },
+    { value: 'lively', label: '活泼' },
+  ], activityLevel, (value) => { activityLevel = value })
+
+  const enabledListEl = form.querySelector('#ms-enabledActionsList')
+  const renderEnabledList = () => {
+    enabledListEl.innerHTML = ''
+    for (const name of ACTS) {
+      const label = document.createElement('label')
+      label.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:12px;padding:2px 0;cursor:pointer'
+      const checkbox = document.createElement('input')
+      checkbox.type = 'checkbox'
+      checkbox.checked = enabledActions.includes(name)
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) {
+          if (!enabledActions.includes(name)) enabledActions.push(name)
+        } else {
+          enabledActions = enabledActions.filter((n) => n !== name)
+        }
+      })
+      label.append(checkbox, name)
+      enabledListEl.appendChild(label)
+    }
+  }
+  renderEnabledList()
+
+  const orderPreviewEl = form.querySelector('#ms-orderPreview')
+  const orderListEl = form.querySelector('#ms-actionOrderList')
+  const renderOrder = () => {
+    orderPreviewEl.innerHTML = ''
+    if (actionOrder.length === 0) {
+      orderPreviewEl.textContent = '未设置顺序，将随机播放'
+      orderPreviewEl.style.color = '#999'
+      orderPreviewEl.style.fontSize = '12px'
+    } else {
+      orderPreviewEl.style.color = '#333'
+      actionOrder.forEach((name, index) => {
+        const chip = document.createElement('span')
+        chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;margin:2px;padding:3px 6px;background:#eef2ff;border-radius:6px;font-size:12px'
+        const label = document.createElement('span')
+        label.textContent = `${index + 1}. ${name}`
+        const up = document.createElement('button')
+        up.textContent = '↑'
+        up.style.cssText = 'border:0;background:transparent;cursor:pointer;font-size:12px'
+        up.addEventListener('click', () => {
+          if (index > 0) {
+            const prev = actionOrder[index - 1]
+            actionOrder[index - 1] = name
+            actionOrder[index] = prev
+            renderOrder()
+          }
+        })
+        const down = document.createElement('button')
+        down.textContent = '↓'
+        down.style.cssText = 'border:0;background:transparent;cursor:pointer;font-size:12px'
+        down.addEventListener('click', () => {
+          if (index < actionOrder.length - 1) {
+            const next = actionOrder[index + 1]
+            actionOrder[index + 1] = name
+            actionOrder[index] = next
+            renderOrder()
+          }
+        })
+        const remove = document.createElement('button')
+        remove.textContent = '×'
+        remove.style.cssText = 'border:0;background:transparent;cursor:pointer;font-size:12px;color:#e55'
+        remove.addEventListener('click', () => {
+          actionOrder = actionOrder.filter((n) => n !== name)
+          renderOrder()
+          renderOrderList()
+        })
+        chip.append(label, up, down, remove)
+        orderPreviewEl.appendChild(chip)
+      })
+    }
+    renderOrderList()
+  }
+  const renderOrderList = () => {
+    orderListEl.innerHTML = ''
+    for (const name of ACTS) {
+      const label = document.createElement('label')
+      label.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:12px;padding:2px 0;cursor:pointer'
+      const checkbox = document.createElement('input')
+      checkbox.type = 'checkbox'
+      checkbox.checked = actionOrder.includes(name)
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) {
+          if (!actionOrder.includes(name)) actionOrder.push(name)
+        } else {
+          actionOrder = actionOrder.filter((n) => n !== name)
+        }
+        renderOrder()
+      })
+      label.append(checkbox, name)
+      orderListEl.appendChild(label)
+    }
+  }
+  renderOrder()
+
+  renderSeg(form.querySelector('#ms-bubbleMode'), [
+    { value: 'always', label: '常驻' },
+    { value: 'hidden', label: '隐藏' },
+    { value: 'custom', label: '自定义' },
+  ], bubbleMode, (value) => { bubbleMode = value })
+
   addMenuButton('保存', () => {
     const val = (id) => form.querySelector(id)
     const number = (id, fallback, min, max) => {
@@ -1212,20 +1332,18 @@ function renderSettingsPage() {
     const moveChance = number('#ms-moveChance', CONFIG.moveChance, 0, 100)
     const actionDelayMs = number('#ms-actionDelayMs', CONFIG.actionDelayMs, 0, 5000)
     const playbackRate = number('#ms-playbackRate', CONFIG.playbackRate, 1, 2)
-    const activityLevel = val('#ms-activityLevel').value
     const reducedMotion = val('#ms-reducedMotion').checked
     const walkEnabled = val('#ms-walkEnabled').checked
     const workMinutes = number('#ms-workMinutes', CONFIG.workMinutes, 1, 120)
     const breakMinutes = number('#ms-breakMinutes', CONFIG.breakMinutes, 1, 60)
     const roastEnabled = val('#ms-roastEnabled').checked
-    const bubbleMode = val('#ms-bubbleMode').value
     const bubbleStates = parseList(val('#ms-bubbleStates').value)
-    const enabledActions = parseList(val('#ms-enabledActions').value)
-    const actionOrder = parseList(val('#ms-actionOrder').value)
+    const finalEnabledActions = enabledActions.length === ACTS.length ? [] : enabledActions.slice()
+    const finalActionOrder = actionOrder.slice()
     Object.assign(CONFIG, {
       petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
       reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
-      bubbleMode, bubbleStates, enabledActions, actionOrder,
+      bubbleMode, bubbleStates, enabledActions: finalEnabledActions, actionOrder: finalActionOrder,
     })
     for (const video of [videoA, videoB]) {
       if (video) video.playbackRate = playbackRate
@@ -1234,7 +1352,7 @@ function renderSettingsPage() {
     window.petBridge.saveConfig({
       petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
       reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
-      bubbleMode, bubbleStates, enabledActions, actionOrder,
+      bubbleMode, bubbleStates, enabledActions: finalEnabledActions, actionOrder: finalActionOrder,
     })
     menuPage = 'main'
     showMenu(lastMenuPos.x, lastMenuPos.y)
