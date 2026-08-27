@@ -257,9 +257,14 @@
       border-radius: 8px;
       padding: 6px;
     }
-    #menu .ms-order-preview span {
+    #menu .ms-order-preview > span {
       background: #e7edff;
       border: 1px solid #ccd8ff;
+      border-radius: 6px;
+    }
+    #menu .ms-order-preview > span > span {
+      background: transparent;
+      border: 0;
     }
     @media (prefers-reduced-motion: reduce) {
       video.pet-video { transition: none; }

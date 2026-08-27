@@ -1201,21 +1201,28 @@ function renderSettingsPage() {
   bindRange('#ms-actionDelayMs', '#ms-actionDelayMs-val', 'ms')
   bindRange('#ms-playbackRate', '#ms-playbackRate-val', 'x')
 
-  const renderSeg = (container, options, current, onChange) => {
+  const renderSeg = (container, name, options, current, onChange) => {
     container.innerHTML = ''
     for (const option of options) {
-      const button = document.createElement('button')
-      button.type = 'button'
-      button.textContent = option.label
-      button.style.cssText = `padding:4px 8px;border:1px solid #d8d8d8;border-radius:6px;background:${option.value === current ? '#4a7cff' : '#fff'};color:${option.value === current ? '#fff' : '#333'};font-size:12px;cursor:pointer;pointer-events:auto;display:inline-block;width:auto`
-      button.onclick = () => {
-        onChange(option.value)
-        renderSeg(container, options, option.value, onChange)
-      }
-      container.appendChild(button)
+      const label = document.createElement('label')
+      label.style.cssText = `display:inline-block;padding:4px 8px;border:1px solid #d8d8d8;border-radius:6px;font-size:12px;cursor:pointer;pointer-events:auto;background:${option.value === current ? '#4a7cff' : '#fff'};color:${option.value === current ? '#fff' : '#333'}`
+      const radio = document.createElement('input')
+      radio.type = 'radio'
+      radio.name = name
+      radio.value = option.value
+      radio.checked = option.value === current
+      radio.style.display = 'none'
+      radio.addEventListener('change', () => {
+        if (radio.checked) {
+          onChange(option.value)
+          renderSeg(container, name, options, option.value, onChange)
+        }
+      })
+      label.append(radio, option.label)
+      container.appendChild(label)
     }
   }
-  renderSeg(form.querySelector('#ms-activityLevel'), [
+  renderSeg(form.querySelector('#ms-activityLevel'), 'ms-activity', [
     { value: 'quiet', label: '安静' },
     { value: 'normal', label: '标准' },
     { value: 'lively', label: '活泼' },
@@ -1258,10 +1265,10 @@ function renderSettingsPage() {
         chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;margin:2px;padding:3px 6px;background:#eef2ff;border-radius:6px;font-size:12px'
         const label = document.createElement('span')
         label.textContent = `${index + 1}. ${name}`
-        const up = document.createElement('button')
-        up.type = 'button'
+        const up = document.createElement('span')
         up.textContent = '↑'
-        up.style.cssText = 'border:0;background:transparent;cursor:pointer;font-size:12px;pointer-events:auto;display:inline-block;width:auto'
+        up.setAttribute('role', 'button')
+        up.style.cssText = 'cursor:pointer;font-size:12px;padding:0 3px;pointer-events:auto;user-select:none'
         up.onclick = () => {
           if (index > 0) {
             const prev = actionOrder[index - 1]
@@ -1270,10 +1277,10 @@ function renderSettingsPage() {
             renderOrder()
           }
         }
-        const down = document.createElement('button')
-        down.type = 'button'
+        const down = document.createElement('span')
         down.textContent = '↓'
-        down.style.cssText = 'border:0;background:transparent;cursor:pointer;font-size:12px;pointer-events:auto;display:inline-block;width:auto'
+        down.setAttribute('role', 'button')
+        down.style.cssText = 'cursor:pointer;font-size:12px;padding:0 3px;pointer-events:auto;user-select:none'
         down.onclick = () => {
           if (index < actionOrder.length - 1) {
             const next = actionOrder[index + 1]
@@ -1282,10 +1289,10 @@ function renderSettingsPage() {
             renderOrder()
           }
         }
-        const remove = document.createElement('button')
-        remove.type = 'button'
+        const remove = document.createElement('span')
         remove.textContent = '×'
-        remove.style.cssText = 'border:0;background:transparent;cursor:pointer;font-size:12px;color:#e55;pointer-events:auto;display:inline-block;width:auto'
+        remove.setAttribute('role', 'button')
+        remove.style.cssText = 'cursor:pointer;font-size:12px;padding:0 3px;color:#e55;pointer-events:auto;user-select:none'
         remove.onclick = () => {
           actionOrder = actionOrder.filter((n) => n !== name)
           renderOrder()
@@ -1319,7 +1326,7 @@ function renderSettingsPage() {
   }
   renderOrder()
 
-  renderSeg(form.querySelector('#ms-bubbleMode'), [
+  renderSeg(form.querySelector('#ms-bubbleMode'), 'ms-bubble', [
     { value: 'always', label: '常驻' },
     { value: 'hidden', label: '隐藏' },
     { value: 'custom', label: '自定义' },
