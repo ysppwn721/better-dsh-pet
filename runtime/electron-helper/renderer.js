@@ -132,6 +132,20 @@ const STATE_ANIMS = {
   ERROR: ['被吓一跳', '玩游戏气急败坏', '偷吃零食被抓住'],
 }
 
+// 情绪系统：根据状态和互动累积情绪，影响空闲动作和气泡。
+const EMOTION_ACTION_POOLS = {
+  tired: ['原地小憩沉眠', '打瞌睡被惊醒', '哈欠连天', '超大伸懒腰'],
+  happy: ['轻快摇摆舞', '可爱宅舞', '优雅女仆舞', '点击回应-开心跃动'],
+  anxious: ['东张西望', '被吓一跳', '原地敲击桌面互动', '深度思考碎碎念'],
+  bored: ['原地漂浮踏步', '原地专心玩魔方', '三球抛接', '荡秋千'],
+}
+const EMOTION_BUBBLES = {
+  tired: ['好累啊，让我趴一会儿…', '眼睛快睁不开了…', '今天也是辛苦的一天呢…'],
+  happy: ['今天心情超好！', '嘿嘿，开心！', '想转圈圈~'],
+  anxious: ['有点小紧张…', '这个任务没问题吧？', '别急别急，我在想…'],
+  bored: ['好无聊啊…', '有没有鱼干吃？', '什么时候有新任务呀…'],
+}
+
 // ---------- DOM ----------
 const rootEl = document.getElementById('pet-root')
 const stageEl = document.getElementById('pet-stage')
@@ -221,12 +235,80 @@ let moveToken = 0
 let movePlan = null
 let actionOrderIndex = 0
 let idleDelayTimer = null
+// 情绪：mood -100~100（负=低落，正=开心），energy 0~100，anxiety 0~100，boredom 0~100
+let emotion = { mood: 0, energy: 100, anxiety: 0, boredom: 0 }
 
 // ---------- 工具 ----------
 const randomBetween = (min, max) => Math.floor(min + Math.random() * (max - min))
 const pick = (pool, exclude) => {
   const entries = exclude ? pool.filter((n) => n !== exclude) : pool
   return entries[Math.floor(Math.random() * entries.length)]
+}
+
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
+
+function updateEmotion(delta) {
+  emotion.mood = clamp(emotion.mood + (delta.mood ?? 0), -100, 100)
+  emotion.energy = clamp(emotion.energy + (delta.energy ?? 0), 0, 100)
+  emotion.anxiety = clamp(emotion.anxiety + (delta.anxiety ?? 0), 0, 100)
+  emotion.boredom = clamp(emotion.boredom + (delta.boredom ?? 0), 0, 100)
+}
+
+function dominantEmotion() {
+  if (emotion.energy < 25) return 'tired'
+  if (emotion.anxiety >= 60) return 'anxious'
+  if (emotion.boredom >= 60) return 'bored'
+  if (emotion.mood >= 50) return 'happy'
+  return 'calm'
+}
+
+function applyStateEmotion(state) {
+  switch (state) {
+    case 'IDLE':
+      updateEmotion({ mood: -1, energy: -1, anxiety: -2, boredom: 3 })
+      break
+    case 'THINKING':
+      updateEmotion({ mood: 0, energy: -2, anxiety: 2, boredom: -2 })
+      break
+    case 'WORKING':
+      updateEmotion({ mood: 1, energy: -3, anxiety: 0, boredom: -3 })
+      break
+    case 'WAITING':
+      updateEmotion({ mood: -1, energy: -1, anxiety: 3, boredom: 2 })
+      break
+    case 'SUCCESS':
+      updateEmotion({ mood: 12, energy: 5, anxiety: -8, boredom: -10 })
+      break
+    case 'ERROR':
+      updateEmotion({ mood: -10, energy: -4, anxiety: 10, boredom: -4 })
+      break
+  }
+}
+
+function applyInteractionEmotion(kind) {
+  if (kind === 'click') updateEmotion({ mood: 5, energy: 2, anxiety: -2, boredom: -3 })
+  else if (kind === 'feed') updateEmotion({ mood: 10, energy: 8, anxiety: -3, boredom: -5 })
+  else if (kind === 'pomodoro') updateEmotion({ mood: 15, energy: 6, anxiety: -5, boredom: -8 })
+}
+
+function pickEmotionAction(usableActions, exclude) {
+  const dominant = dominantEmotion()
+  const pool = EMOTION_ACTION_POOLS[dominant]
+  if (dominant !== 'calm' && pool && pool.length && Math.random() < 0.5) {
+    const candidate = pick(pool, exclude)
+    if (candidate && (usableActions.includes(candidate) || CONFIG.enabledActions.length === 0)) {
+      return candidate
+    }
+  }
+  return pick(usableActions, exclude)
+}
+
+function emotionBubbleIfAny() {
+  const dominant = dominantEmotion()
+  if (dominant === 'calm') return null
+  const texts = EMOTION_BUBBLES[dominant]
+  if (!texts || !texts.length || Math.random() >= 0.35) return null
+  return pick(texts)
 }
 
 function assetUrl(name) {
@@ -317,15 +399,15 @@ function playIdle() {
       if (CONFIG.activityLevel === 'quiet') {
         if (roll < 0.5) next = IDLE
         else if (roll < 0.6) next = TURN
-        else next = pick(usableActions, anim)
+        else next = pickEmotionAction(usableActions, anim)
       } else if (CONFIG.activityLevel === 'lively') {
         if (roll < 0.15) next = IDLE
         else if (roll < 0.3) next = TURN
-        else next = pick(usableActions, anim)
+        else next = pickEmotionAction(usableActions, anim)
       } else {
         if (roll < 0.3) next = IDLE
         else if (roll < 0.4) next = TURN
-        else next = pick(usableActions, anim)
+        else next = pickEmotionAction(usableActions, anim)
       }
     }
   }
@@ -336,10 +418,11 @@ function playIdle() {
   switchTo(next, { once: true })
   // 移动驱动在视频加载完成后启动（switchTo onReady 里调用），
   // 这样可以使用视频真实时长，避免动画还没播完就提前停下。
-  // 随机动作/走动播放时，给出与动作匹配的可爱气泡描述。
+  // 随机动作/走动播放时，给出与动作匹配的可爱气泡描述；情绪强烈时优先说情绪台词。
   if (next !== IDLE) {
-    const copy = ACTION_COPY[next] || `大肥鱼正在${next}~`
-    showManualBubble(copy, '大肥鱼的小剧场~', 4200)
+    const emotionCopy = emotionBubbleIfAny()
+    const copy = emotionCopy || ACTION_COPY[next] || `大肥鱼正在${next}~`
+    showManualBubble(copy, emotionCopy ? '大肥鱼的心情~' : '大肥鱼的小剧场~', 4200)
   }
 }
 
@@ -360,6 +443,7 @@ function playClick() {
   clearIdleDelay()
   stopMove()
   currentMode = 'click'
+  applyInteractionEmotion('click')
   const next = pick(CLICKS, anim)
   anim = next
   animOnce = true
@@ -567,6 +651,7 @@ function applyStateMessage(message) {
   resumeMessage = message.message || ''
   resumeDetail = message.detail || ''
   clearOverlay()
+  applyStateEmotion(state)
   if (state === 'IDLE') playIdle()
   else playState(state)
   updateBubble()
@@ -586,6 +671,7 @@ function applyPulseMessage(message) {
   }
   lastPulseKey = `${state}:${message.expiresAt || message.ttlMs || 1800}`
   currentState = state
+  applyStateEmotion(state)
   if (state === 'SUCCESS') {
     window.petBridge.beep()
     shakePet()
@@ -627,6 +713,7 @@ function showManualBubble(message, detail, ttl = 2200) {
 
 function feedPet() {
   clearIdleDelay()
+  applyInteractionEmotion('feed')
   const next = pick(EAT_ANIMS, anim)
   anim = next
   animOnce = true
@@ -701,6 +788,7 @@ function updatePomodoro() {
 function completePomodoro() {
   const mode = pomodoro?.mode || 'work'
   stopPomodoro()
+  applyInteractionEmotion('pomodoro')
   playAlarm()
   shakePet()
   showManualBubble(
@@ -1373,6 +1461,17 @@ window.petBridge.onStatus((status) => {
 playIdle()
 updateBubble()
 updateClickThrough()
+
+// 情绪缓慢变化：空闲会越来越无聊/疲惫，工作会消耗精力。
+setInterval(() => {
+  if (currentState === 'IDLE') {
+    updateEmotion({ mood: -1, energy: -1, anxiety: -1, boredom: 2 })
+  } else if (currentState === 'WORKING' || currentState === 'THINKING') {
+    updateEmotion({ energy: -1, boredom: -1 })
+  } else if (currentState === 'WAITING') {
+    updateEmotion({ anxiety: 1, boredom: 1 })
+  }
+}, 10000)
 
 // 看门狗：万一 video 的 ended 事件或 loop 没有按预期工作，这里兜底，
 // 避免宠物停在最后一帧。
