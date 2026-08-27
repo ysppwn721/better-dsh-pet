@@ -988,6 +988,10 @@ function showMenu(x, y) {
     renderActionSettings()
   } else if (menuPage === 'appearance') {
     renderAppearanceSettings()
+  } else if (menuPage === 'settings') {
+    renderSettingsPage()
+  } else if (menuPage === 'features') {
+    renderFeatureSettings()
   } else {
     renderMainMenu()
   }
@@ -1031,12 +1035,32 @@ function renderEmotionBars(container) {
   container.appendChild(panel)
 }
 
-function renderMainMenu() {
+function renderSettingsPage() {
+  addMenuButton('← 返回主菜单', () => {
+    menuPage = 'main'
+    showMenu(lastMenuPos.x, lastMenuPos.y)
+  })
   renderEmotionBars(menuEl)
-  addMenuButton('喂食', () => {
+  addMenuButton('外观与行为', () => {
+    menuPage = 'appearance'
+    showMenu(lastMenuPos.x, lastMenuPos.y)
+  })
+  addMenuButton('番茄钟', () => {
+    menuPage = 'pomodoro'
+    showMenu(lastMenuPos.x, lastMenuPos.y)
+  })
+  addMenuButton('待机动作', () => {
+    menuPage = 'actions'
+    showMenu(lastMenuPos.x, lastMenuPos.y)
+  })
+  addMenuButton('功能开关', () => {
+    menuPage = 'features'
+    showMenu(lastMenuPos.x, lastMenuPos.y)
+  })
+  addMenuButton('打开 DSH 桌面版', () => {
     menuEl.classList.remove('visible')
     updateClickThrough()
-    feedPet()
+    window.petBridge.openDesktop()
   })
   if (CONFIG.enabled) {
     addMenuButton('禁用 Better DSH Pet', () => {
@@ -1046,6 +1070,44 @@ function renderMainMenu() {
       updateClickThrough()
     })
   }
+}
+
+function renderFeatureSettings() {
+  addMenuButton('← 返回设置', () => {
+    menuPage = 'settings'
+    showMenu(lastMenuPos.x, lastMenuPos.y)
+  })
+  const toggleButton = (label, current, onToggle) => {
+    addMenuButton(`${label}：${current ? '开' : '关'}`, () => {
+      onToggle(!current)
+      menuPage = 'features'
+      showMenu(lastMenuPos.x, lastMenuPos.y)
+    })
+  }
+  toggleButton('自动吐槽', CONFIG.roastEnabled === true, (next) => {
+    CONFIG.roastEnabled = next
+    window.petBridge.saveConfig({ roastEnabled: next })
+  })
+  toggleButton('允许行走', CONFIG.walkEnabled !== false, (next) => {
+    CONFIG.walkEnabled = next
+    window.petBridge.saveConfig({ walkEnabled: next })
+  })
+  toggleButton('减少动态效果', CONFIG.reducedMotion === true, (next) => {
+    CONFIG.reducedMotion = next
+    window.petBridge.saveConfig({ reducedMotion: next })
+  })
+  addMenuButton('返回', () => {
+    menuPage = 'settings'
+    showMenu(lastMenuPos.x, lastMenuPos.y)
+  })
+}
+
+function renderMainMenu() {
+  addMenuButton('喂食', () => {
+    menuEl.classList.remove('visible')
+    updateClickThrough()
+    feedPet()
+  })
   addMenuButton(`开始番茄钟 ${CONFIG.workMinutes}分`, () => {
     menuEl.classList.remove('visible')
     updateClickThrough()
@@ -1063,57 +1125,14 @@ function renderMainMenu() {
       stopPomodoro()
     })
   }
-  addMenuButton('番茄钟设置', () => {
-    menuPage = 'pomodoro'
-    showMenu(lastMenuPos.x, lastMenuPos.y)
-  })
-  addMenuButton('行为设置', () => {
-    menuPage = 'appearance'
-    showMenu(lastMenuPos.x, lastMenuPos.y)
-  })
-  // 选择待机动作：鼠标悬停展开，移开自动关闭。
-  const actionWrap = document.createElement('div')
-  actionWrap.style.cssText = 'position:static'
-  const actionBtn = document.createElement('button')
-  actionBtn.textContent = '选择待机动作'
-  const actionFlyout = document.createElement('div')
-  actionFlyout.style.cssText = 'margin-top:4px;background:#fff;border:1px solid #e3e5e8;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:8px;max-height:70vh;overflow-y:auto;display:none'
-  actionBtn.addEventListener('mouseenter', () => {
-    renderActionFlyoutContent(actionFlyout)
-    actionFlyout.style.display = 'block'
-  })
-  actionWrap.addEventListener('mouseleave', (e) => {
-    if (!actionFlyout.contains(e.relatedTarget)) actionFlyout.style.display = 'none'
-  })
-  actionFlyout.addEventListener('mouseleave', (e) => {
-    if (!actionWrap.contains(e.relatedTarget)) actionFlyout.style.display = 'none'
-  })
-  actionWrap.appendChild(actionBtn)
-  actionWrap.appendChild(actionFlyout)
-  menuEl.appendChild(actionWrap)
-  addMenuButton(CONFIG.roastEnabled ? '关闭自动吐槽' : '开启自动吐槽', () => {
-    const next = !CONFIG.roastEnabled
-    CONFIG.roastEnabled = next
-    window.petBridge.saveConfig({ roastEnabled: next })
-    menuEl.classList.remove('visible')
-    updateClickThrough()
-  })
-  addMenuButton(CONFIG.walkEnabled ? '关闭行走' : '开启行走', () => {
-    const next = !CONFIG.walkEnabled
-    CONFIG.walkEnabled = next
-    window.petBridge.saveConfig({ walkEnabled: next })
-    menuEl.classList.remove('visible')
-    updateClickThrough()
-  })
   addMenuButton('让大肥鱼吐槽一下', () => {
     menuEl.classList.remove('visible')
     updateClickThrough()
     window.petBridge.requestRoast()
   })
-  addMenuButton('打开 DSH 桌面版', () => {
-    menuEl.classList.remove('visible')
-    updateClickThrough()
-    window.petBridge.openDesktop()
+  addMenuButton('设置…', () => {
+    menuPage = 'settings'
+    showMenu(lastMenuPos.x, lastMenuPos.y)
   })
   addMenuButton('本次隐藏', () => {
     menuEl.classList.remove('visible')
@@ -1128,8 +1147,8 @@ function renderMainMenu() {
 }
 
 function renderPomodoroSettings() {
-  addMenuButton('← 返回主菜单', () => {
-    menuPage = 'main'
+  addMenuButton('← 返回设置', () => {
+    menuPage = 'settings'
     showMenu(lastMenuPos.x, lastMenuPos.y)
   })
   const workInput = document.createElement('input')
@@ -1168,14 +1187,14 @@ function renderPomodoroSettings() {
     updateBubble()
   })
   addMenuButton('返回', () => {
-    menuPage = 'main'
+    menuPage = 'settings'
     showMenu(lastMenuPos.x, lastMenuPos.y)
   })
 }
 
 function renderAppearanceSettings() {
-  addMenuButton('← 返回主菜单', () => {
-    menuPage = 'main'
+  addMenuButton('← 返回设置', () => {
+    menuPage = 'settings'
     showMenu(lastMenuPos.x, lastMenuPos.y)
   })
 
@@ -1264,15 +1283,15 @@ function renderAppearanceSettings() {
     updateClickThrough()
   })
   addMenuButton('返回', () => {
-    menuPage = 'main'
+    menuPage = 'settings'
     showMenu(lastMenuPos.x, lastMenuPos.y)
   })
 }
 
 function renderActionSettings() {
   // 空数组 = 全部动作，所以 UI 里初始化为全选。
-  addMenuButton('← 返回主菜单', () => {
-    menuPage = 'main'
+  addMenuButton('← 返回设置', () => {
+    menuPage = 'settings'
     showMenu(lastMenuPos.x, lastMenuPos.y)
   })
   const working = CONFIG.enabledActions.length > 0 ? CONFIG.enabledActions.slice() : ACTS.slice()
@@ -1315,7 +1334,7 @@ function renderActionSettings() {
     updateClickThrough()
   })
   addMenuButton('返回', () => {
-    menuPage = 'main'
+    menuPage = 'settings'
     showMenu(lastMenuPos.x, lastMenuPos.y)
   })
 }
