@@ -1207,11 +1207,11 @@ function renderSettingsPage() {
       const button = document.createElement('button')
       button.type = 'button'
       button.textContent = option.label
-      button.style.cssText = `padding:4px 8px;border:1px solid #d8d8d8;border-radius:6px;background:${option.value === current ? '#4a7cff' : '#fff'};color:${option.value === current ? '#fff' : '#333'};font-size:12px;cursor:pointer;pointer-events:auto`
-      button.addEventListener('click', () => {
+      button.style.cssText = `padding:4px 8px;border:1px solid #d8d8d8;border-radius:6px;background:${option.value === current ? '#4a7cff' : '#fff'};color:${option.value === current ? '#fff' : '#333'};font-size:12px;cursor:pointer;pointer-events:auto;display:inline-block;width:auto`
+      button.onclick = () => {
         onChange(option.value)
         renderSeg(container, options, option.value, onChange)
-      })
+      }
       container.appendChild(button)
     }
   }
@@ -1261,36 +1261,36 @@ function renderSettingsPage() {
         const up = document.createElement('button')
         up.type = 'button'
         up.textContent = '↑'
-        up.style.cssText = 'border:0;background:transparent;cursor:pointer;font-size:12px;pointer-events:auto'
-        up.addEventListener('click', () => {
+        up.style.cssText = 'border:0;background:transparent;cursor:pointer;font-size:12px;pointer-events:auto;display:inline-block;width:auto'
+        up.onclick = () => {
           if (index > 0) {
             const prev = actionOrder[index - 1]
             actionOrder[index - 1] = name
             actionOrder[index] = prev
             renderOrder()
           }
-        })
+        }
         const down = document.createElement('button')
         down.type = 'button'
         down.textContent = '↓'
-        down.style.cssText = 'border:0;background:transparent;cursor:pointer;font-size:12px;pointer-events:auto'
-        down.addEventListener('click', () => {
+        down.style.cssText = 'border:0;background:transparent;cursor:pointer;font-size:12px;pointer-events:auto;display:inline-block;width:auto'
+        down.onclick = () => {
           if (index < actionOrder.length - 1) {
             const next = actionOrder[index + 1]
             actionOrder[index + 1] = name
             actionOrder[index] = next
             renderOrder()
           }
-        })
+        }
         const remove = document.createElement('button')
         remove.type = 'button'
         remove.textContent = '×'
-        remove.style.cssText = 'border:0;background:transparent;cursor:pointer;font-size:12px;color:#e55;pointer-events:auto'
-        remove.addEventListener('click', () => {
+        remove.style.cssText = 'border:0;background:transparent;cursor:pointer;font-size:12px;color:#e55;pointer-events:auto;display:inline-block;width:auto'
+        remove.onclick = () => {
           actionOrder = actionOrder.filter((n) => n !== name)
           renderOrder()
           renderOrderList()
-        })
+        }
         chip.append(label, up, down, remove)
         orderPreviewEl.appendChild(chip)
       })
