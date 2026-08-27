@@ -1167,7 +1167,7 @@ function renderSettingsPage() {
   let actionOrder = CONFIG.actionOrder.filter((name) => ACTS.includes(name))
 
   const form = document.createElement('div')
-  form.style.cssText = 'min-width:320px;padding:2px 2px 6px'
+  form.style.cssText = 'min-width:320px;padding:2px 2px 6px;pointer-events:auto'
   form.innerHTML = `
     <div style="font-size:13px;font-weight:600;margin:4px 0 6px;color:#333">外观与行为</div>
     <div class="ms-field"><span>宠物宽度</span><input type="number" id="ms-petSize" min="100" max="1000" step="10" value="${CONFIG.petSize}"></div>
@@ -1207,7 +1207,7 @@ function renderSettingsPage() {
       const button = document.createElement('button')
       button.type = 'button'
       button.textContent = option.label
-      button.style.cssText = `padding:4px 8px;border:1px solid #d8d8d8;border-radius:6px;background:${option.value === current ? '#4a7cff' : '#fff'};color:${option.value === current ? '#fff' : '#333'};font-size:12px;cursor:pointer`
+      button.style.cssText = `padding:4px 8px;border:1px solid #d8d8d8;border-radius:6px;background:${option.value === current ? '#4a7cff' : '#fff'};color:${option.value === current ? '#fff' : '#333'};font-size:12px;cursor:pointer;pointer-events:auto`
       button.addEventListener('click', () => {
         onChange(option.value)
         renderSeg(container, options, option.value, onChange)
@@ -1259,8 +1259,9 @@ function renderSettingsPage() {
         const label = document.createElement('span')
         label.textContent = `${index + 1}. ${name}`
         const up = document.createElement('button')
+        up.type = 'button'
         up.textContent = '↑'
-        up.style.cssText = 'border:0;background:transparent;cursor:pointer;font-size:12px'
+        up.style.cssText = 'border:0;background:transparent;cursor:pointer;font-size:12px;pointer-events:auto'
         up.addEventListener('click', () => {
           if (index > 0) {
             const prev = actionOrder[index - 1]
@@ -1270,8 +1271,9 @@ function renderSettingsPage() {
           }
         })
         const down = document.createElement('button')
+        down.type = 'button'
         down.textContent = '↓'
-        down.style.cssText = 'border:0;background:transparent;cursor:pointer;font-size:12px'
+        down.style.cssText = 'border:0;background:transparent;cursor:pointer;font-size:12px;pointer-events:auto'
         down.addEventListener('click', () => {
           if (index < actionOrder.length - 1) {
             const next = actionOrder[index + 1]
@@ -1281,8 +1283,9 @@ function renderSettingsPage() {
           }
         })
         const remove = document.createElement('button')
+        remove.type = 'button'
         remove.textContent = '×'
-        remove.style.cssText = 'border:0;background:transparent;cursor:pointer;font-size:12px;color:#e55'
+        remove.style.cssText = 'border:0;background:transparent;cursor:pointer;font-size:12px;color:#e55;pointer-events:auto'
         remove.addEventListener('click', () => {
           actionOrder = actionOrder.filter((n) => n !== name)
           renderOrder()
