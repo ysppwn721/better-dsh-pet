@@ -54,14 +54,17 @@
     "assets/thumb",
     "assets/alarm.mp3",
     "cordis.patch.yml",
-    "scripts/ensure-electron.mjs"
+    "scripts/ensure-electron.mjs",
+    "scripts/download-sensevoice.mjs"
   ],
   "scripts": {
-    "prepack": "node scripts/prepack-check.js"
+    "prepack": "node scripts/prepack-check.js",
+    "download:sensevoice": "node scripts/download-sensevoice.mjs"
   },
   "license": "MIT",
   "dependencies": {
-    "@deepseek-ai/schemastery": "^3.18.1"
+    "@deepseek-ai/schemastery": "^3.18.1",
+    "sherpa-onnx-node": "1.13.5"
   },
   "dsh": {
     "bundle": {

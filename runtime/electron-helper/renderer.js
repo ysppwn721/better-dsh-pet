@@ -1227,12 +1227,24 @@ function renderChatPanel() {
     messagesEl.scrollTop = messagesEl.scrollHeight
     window.petBridge.speak(reply)
   }
-  mic.onmousedown = (e) => {
+  mic.onmousedown = async (e) => {
     e.preventDefault()
+    if (senseRecording) {
+      appendMsg('pet', '正在停止录音…')
+      await stopSenseRecording()
+      return
+    }
     if (chatDictationPending) return
     chatDictationPending = true
     appendMsg('pet', '我在听，请说话…')
-    window.petBridge.startDictation()
+    try {
+      await startSenseRecording()
+    } catch {
+      // 本地录音不可用时，回退到 SAPI 命令/听写
+      chatDictationPending = false
+      appendMsg('pet', '本地录音不可用，切换系统识别…')
+      window.petBridge.startDictation()
+    }
   }
   send.onmousedown = (e) => { e.preventDefault(); void doSend() }
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') void doSend() })
@@ -1248,6 +1260,108 @@ function openChat() {
 function closeChat() {
   chatPanel.classList.remove('visible')
   updateClickThrough()
+}
+
+let senseRecording = null
+let senseChunks = []
+
+function encodeWav(samples, sampleRate) {
+  const buffer = new ArrayBuffer(44 + samples.length * 2)
+  const view = new DataView(buffer)
+  const writeString = (offset, str) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i))
+  }
+  writeString(0, 'RIFF')
+  view.setUint32(4, 36 + samples.length * 2, true)
+  writeString(8, 'WAVE')
+  writeString(12, 'fmt ')
+  view.setUint32(16, 16, true)
+  view.setUint16(20, 1, true)
+  view.setUint16(22, 1, true)
+  view.setUint32(24, sampleRate, true)
+  view.setUint32(28, sampleRate * 2, true)
+  view.setUint16(32, 2, true)
+  view.setUint16(34, 16, true)
+  writeString(36, 'data')
+  view.setUint32(40, samples.length * 2, true)
+  for (let i = 0; i < samples.length; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]))
+    view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true)
+  }
+  return new Uint8Array(buffer)
+}
+
+function resampleLinear(input, fromRate, toRate) {
+  if (input.length === 0) return new Float32Array(0)
+  const ratio = fromRate / toRate
+  const outputLength = Math.max(1, Math.round(input.length / ratio))
+  const output = new Float32Array(outputLength)
+  for (let i = 0; i < outputLength; i++) {
+    const pos = i * ratio
+    const index = Math.floor(pos)
+    const frac = pos - index
+    const a = input[Math.min(index, input.length - 1)]
+    const b = input[Math.min(index + 1, input.length - 1)]
+    output[i] = a + (b - a) * frac
+  }
+  return output
+}
+
+async function startSenseRecording() {
+  if (senseRecording) return
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+  const audioContext = new AudioContext({ sampleRate: 16000 })
+  const source = audioContext.createMediaStreamSource(stream)
+  const scriptNode = audioContext.createScriptProcessor(4096, 1, 1)
+  senseChunks = []
+  scriptNode.onaudioprocess = (event) => {
+    senseChunks.push(new Float32Array(event.inputBuffer.getChannelData(0)))
+  }
+  source.connect(scriptNode)
+  scriptNode.connect(audioContext.destination)
+  senseRecording = { stream, audioContext, source, scriptNode }
+}
+
+async function stopSenseRecording() {
+  if (!senseRecording) return
+  const { stream, audioContext, source, scriptNode } = senseRecording
+  senseRecording = null
+  try {
+    scriptNode.disconnect()
+    source.disconnect()
+    stream.getTracks().forEach((track) => track.stop())
+    await audioContext.close()
+  } catch {
+    // 忽略清理异常
+  }
+  const sampleRate = audioContext.sampleRate || 16000
+  let samples = new Float32Array(senseChunks.reduce((sum, chunk) => sum + chunk.length, 0))
+  let offset = 0
+  for (const chunk of senseChunks) {
+    samples.set(chunk, offset)
+    offset += chunk.length
+  }
+  senseChunks = []
+  if (sampleRate !== 16000) samples = resampleLinear(samples, sampleRate, 16000)
+  const wav = encodeWav(samples, 16000)
+  chatDictationPending = false
+  if (chatAppendMsg) chatAppendMsg('pet', '识别中…')
+  const result = await window.petBridge.transcribe(wav.buffer)
+  const text = result?.text || ''
+  if (!text) {
+    if (chatAppendMsg) chatAppendMsg('pet', '没听清，或本地模型未就绪，再说一次吧~')
+    return
+  }
+  if (chatPanel && chatPanel.classList.contains('visible')) {
+    const input = chatPanel.querySelector('input')
+    if (input) {
+      input.value = text
+      input.focus()
+      if (chatAppendMsg) chatAppendMsg('pet', `识别到：${text}\n可修改后按回车发送`)
+      return
+    }
+  }
+  await handleDictationResult(text)
 }
 
 async function handleDictationResult(text) {

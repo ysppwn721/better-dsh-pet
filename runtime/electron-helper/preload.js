@@ -69,4 +69,7 @@ contextBridge.exposeInMainWorld('petBridge', {
   speak(text) {
     ipcRenderer.send('pet:speak', text)
   },
+  transcribe(wavBuffer) {
+    return ipcRenderer.invoke('pet:transcribe', wavBuffer)
+  },
 })

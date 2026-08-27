@@ -565,6 +565,22 @@ app.whenReady().then(() => {
       return { ok: false, reply: '网络开小差了，等会儿再聊吧~' }
     }
   })
+  ipcMain.handle('pet:transcribe', async (_event, wavBuffer) => {
+    const statusUrl = process.env.DSH_PET_STATUS_URL
+    if (!statusUrl || !wavBuffer) return { ok: false, text: '' }
+    try {
+      const transcribeUrl = statusUrl.replace(/\/plugins\/better-dsh-pet\/status$/, '/plugins/better-dsh-pet/transcribe')
+      const response = await fetch(transcribeUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'audio/wav' },
+        body: Buffer.from(wavBuffer),
+      })
+      const data = await response.json()
+      return data
+    } catch {
+      return { ok: false, text: '' }
+    }
+  })
   ipcMain.on('pet:save-config', async (_event, patch) => {
     const statusUrl = process.env.DSH_PET_STATUS_URL
     if (!statusUrl || !patch || typeof patch !== 'object') return
