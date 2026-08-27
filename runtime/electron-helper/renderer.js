@@ -1349,7 +1349,8 @@ async function stopSenseRecording() {
   const result = await window.petBridge.transcribe(wav.buffer)
   const text = result?.text || ''
   if (!text) {
-    if (chatAppendMsg) chatAppendMsg('pet', '没听清，或本地模型未就绪，再说一次吧~')
+    const error = result?.error || ''
+    if (chatAppendMsg) chatAppendMsg('pet', error ? `识别失败：${error}` : '没听清，再说一次吧~')
     return
   }
   if (chatPanel && chatPanel.classList.contains('visible')) {

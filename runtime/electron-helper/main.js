@@ -5,7 +5,7 @@
  * 改为轮询 DSH 宿主暴露的 /plugins/better-dsh-pet/status HTTP 端点，
  * 把最新状态转发给透明置顶窗口内的 renderer。
  */
-const { app, BrowserWindow, ipcMain, screen, shell, Tray, Menu, nativeImage } = require('electron')
+const { app, BrowserWindow, ipcMain, screen, shell, Tray, Menu, nativeImage, session } = require('electron')
 const path = require('node:path')
 const { spawn, execFile } = require('node:child_process')
 const { existsSync } = require('node:fs')
@@ -500,6 +500,11 @@ function startPolling() {
 }
 
 app.whenReady().then(() => {
+  // 允许渲染进程使用麦克风（语音闲聊/唤醒需要）
+  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+    callback(permission === 'media')
+  })
+  session.defaultSession.setPermissionCheckHandler(() => true)
   createWindow()
   createTray()
   startTopmostWatchdog()
