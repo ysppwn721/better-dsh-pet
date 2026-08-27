@@ -358,6 +358,8 @@ try {
   $choices.Add('大肥鱼在吗')
   $choices.Add('嗨大肥鱼你在吗')
   $choices.Add('大肥鱼出来')
+  $choices.Add('大肥鱼')
+  $choices.Add('嗨大肥鱼')
   $grammar = New-Object System.Speech.Recognition.Grammar($choices)
   $recognizer.LoadGrammar($grammar)
   while ($true) {

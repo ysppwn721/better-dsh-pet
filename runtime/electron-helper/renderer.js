@@ -1262,6 +1262,24 @@ function closeChat() {
   updateClickThrough()
 }
 
+async function sendChatText(content) {
+  const text = String(content || '').trim()
+  if (!text) return
+  if (chatAppendMsg) chatAppendMsg('user', text)
+  chatMessages.push({ role: 'user', content: text })
+  if (chatAppendMsg) chatAppendMsg('pet', '正在想…')
+  const result = await window.petBridge.sendChat(text)
+  const reply = result?.reply || '大肥鱼走神了，再说一遍吧~'
+  if (chatPanel && chatPanel.classList.contains('visible')) {
+    const messagesEl = chatPanel.querySelector('.chat-messages')
+    const last = messagesEl?.querySelector('.chat-msg.pet:last-child')
+    if (last) last.textContent = reply
+    if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight
+  }
+  chatMessages.push({ role: 'assistant', content: reply })
+  window.petBridge.speak(reply)
+}
+
 let senseRecording = null
 let senseChunks = []
 
@@ -1314,15 +1332,35 @@ async function startSenseRecording() {
   const source = audioContext.createMediaStreamSource(stream)
   const scriptNode = audioContext.createScriptProcessor(4096, 1, 1)
   senseChunks = []
+  let hasVoice = false
+  let lastVoice = 0
+  const startTime = Date.now()
+  let autoStopped = false
   scriptNode.onaudioprocess = (event) => {
-    senseChunks.push(new Float32Array(event.inputBuffer.getChannelData(0)))
+    const data = event.inputBuffer.getChannelData(0)
+    senseChunks.push(new Float32Array(data))
+    let sum = 0
+    for (let i = 0; i < data.length; i++) sum += data[i] * data[i]
+    const rms = Math.sqrt(sum / data.length)
+    if (rms > 0.012) {
+      hasVoice = true
+      lastVoice = Date.now()
+    }
+    // 自动断句：检测到人声后，静音超过 1.2 秒自动停止并转写
+    if (hasVoice && !autoStopped && Date.now() - lastVoice > 1200 && Date.now() - startTime > 800) {
+      autoStopped = true
+      scriptNode.onaudioprocess = null
+      setTimeout(() => {
+        if (senseRecording) void stopSenseRecording(true)
+      }, 0)
+    }
   }
   source.connect(scriptNode)
   scriptNode.connect(audioContext.destination)
   senseRecording = { stream, audioContext, source, scriptNode }
 }
 
-async function stopSenseRecording() {
+async function stopSenseRecording(autoSend = false) {
   if (!senseRecording) return
   const { stream, audioContext, source, scriptNode } = senseRecording
   senseRecording = null
@@ -1351,6 +1389,10 @@ async function stopSenseRecording() {
   if (!text) {
     const error = result?.error || ''
     if (chatAppendMsg) chatAppendMsg('pet', error ? `识别失败：${error}` : '没听清，再说一次吧~')
+    return
+  }
+  if (autoSend) {
+    await sendChatText(text)
     return
   }
   if (chatPanel && chatPanel.classList.contains('visible')) {
@@ -2097,10 +2139,22 @@ function applyStatus(incoming) {
   }
 }
 
-function handleVoiceCommand(text) {
+async function handleVoiceCommand(text) {
   const command = String(text || '').trim()
   if (!command) {
     showManualBubble('没听清，再说一次吧~', '', 2500)
+    return
+  }
+  // 闲聊框打开时，只说“大肥鱼”就自动开始录音
+  if ((command === '大肥鱼' || command === '嗨大肥鱼') && chatPanel.classList.contains('visible')) {
+    if (!senseRecording) {
+      showManualBubble('我在，请说~', '', 1500)
+      try {
+        await startSenseRecording()
+      } catch {
+        if (chatAppendMsg) chatAppendMsg('pet', '录音不可用，请点击 🎤 重试~')
+      }
+    }
     return
   }
   if (command.includes('在吗') || command.includes('在不在') || command.includes('出来')) {
