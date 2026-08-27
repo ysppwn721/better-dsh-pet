@@ -165,12 +165,14 @@ function isFullscreenRect(rect) {
   if (!rect) return false
   const displays = screen.getAllDisplays()
   return displays.some((display) => {
-    const wa = display.workArea
+    // 用 bounds（整个屏幕含任务栏区域）判断“真全屏”；
+    // 最大化窗口只覆盖 workArea，不应算全屏，避免 B 站 App 一打开就误藏桌宠。
+    const bounds = display.bounds
     const tolerance = 2
-    return rect.x <= wa.x + tolerance
-      && rect.y <= wa.y + tolerance
-      && rect.x + rect.width >= wa.x + wa.width - tolerance
-      && rect.y + rect.height >= wa.y + wa.height - tolerance
+    return rect.x <= bounds.x + tolerance
+      && rect.y <= bounds.y + tolerance
+      && rect.x + rect.width >= bounds.x + bounds.width - tolerance
+      && rect.y + rect.height >= bounds.y + bounds.height - tolerance
   })
 }
 
@@ -179,6 +181,7 @@ const KEEP_VISIBLE_FULLSCREEN_PROCESSES = new Set([
   'explorer', 'code', 'devenv', 'winword', 'excel', 'powerpnt', 'onenote', 'outlook',
   'acrobat', 'acrord32', 'notepad', 'notepad++', 'windowsTerminal', 'mintty', 'obsidian',
   'typora', 'wechat', 'qq', 'dingtalk', 'feishu', 'slack', 'teams', 'zoom', 'wps', 'et', 'wpp',
+  'dsh desktop', 'dsh',
 ])
 const BROWSER_PROCESSES = new Set([
   'chrome', 'msedge', 'firefox', 'opera', 'brave', 'vivaldi', 'chromium',
