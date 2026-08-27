@@ -24,6 +24,7 @@ let tray = null
 let userHidden = false
 let fullscreenHidden = false
 let fullscreenCheckTimer = null
+let wakeWordProcess = null
 
 function setClickThrough(ignore) {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -270,6 +271,76 @@ try {
   })
 }
 
+function sendVoiceResult(text) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('pet:voice-result', text || '')
+  }
+}
+
+function startWakeWordListener() {
+  if (wakeWordProcess) return
+  const script = `
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+Add-Type -AssemblyName System.Speech
+try {
+  $culture = [System.Globalization.CultureInfo]::GetCultureInfo('zh-CN')
+  $recognizer = New-Object System.Speech.Recognition.SpeechRecognitionEngine($culture)
+  $recognizer.SetInputToDefaultAudioDevice()
+  $choices = New-Object System.Speech.Recognition.Choices
+  $choices.Add('大肥鱼开始番茄钟')
+  $choices.Add('嗨大肥鱼开始番茄钟')
+  $choices.Add('大肥鱼开始休息')
+  $choices.Add('嗨大肥鱼开始休息')
+  $choices.Add('大肥鱼停止番茄钟')
+  $choices.Add('大肥鱼喂食')
+  $choices.Add('大肥鱼隐藏')
+  $choices.Add('大肥鱼关闭')
+  $choices.Add('大肥鱼余额')
+  $choices.Add('大肥鱼吐槽')
+  $choices.Add('大肥鱼设置')
+  $grammar = New-Object System.Speech.Recognition.Grammar($choices)
+  $recognizer.LoadGrammar($grammar)
+  while ($true) {
+    $result = $recognizer.Recognize()
+    if ($result -ne $null) {
+      'CMD:' + $result.Text
+    }
+  }
+} catch {
+  'ERROR: ' + $_.Exception.Message
+}
+`
+  const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+    windowsHide: true,
+  })
+  let buffer = ''
+  child.stdout.on('data', (chunk) => {
+    buffer += chunk.toString('utf8')
+    const lines = buffer.split(/\r?\n/)
+    buffer = lines.pop() || ''
+    for (const line of lines) {
+      const text = line.trim()
+      if (text.startsWith('CMD:')) {
+        sendVoiceResult(text.slice(4))
+      } else if (text.startsWith('ERROR:')) {
+        stopWakeWordListener()
+        sendVoiceResult('')
+      }
+    }
+  })
+  child.on('exit', () => {
+    if (wakeWordProcess === child) wakeWordProcess = null
+  })
+  wakeWordProcess = child
+}
+
+function stopWakeWordListener() {
+  if (wakeWordProcess) {
+    wakeWordProcess.kill()
+    wakeWordProcess = null
+  }
+}
+
 function createWindow() {
   const scale = Number(process.env.DSH_PET_SCALE || '1')
   const bubbleScale = Number(process.env.DSH_PET_BUBBLE_SCALE || '1')
@@ -401,6 +472,15 @@ app.whenReady().then(() => {
       }
     })
   })
+  ipcMain.on('pet:wake-word-toggle', (event) => {
+    if (wakeWordProcess) {
+      stopWakeWordListener()
+      event.sender.send('pet:wake-state', false)
+    } else {
+      startWakeWordListener()
+      event.sender.send('pet:wake-state', true)
+    }
+  })
   ipcMain.on('pet:save-config', async (_event, patch) => {
     const statusUrl = process.env.DSH_PET_STATUS_URL
     if (!statusUrl || !patch || typeof patch !== 'object') return
@@ -444,6 +524,10 @@ app.whenReady().then(() => {
   ipcMain.on('pet:drag-end', () => {
     // 保留此通道，后续可用来做拖拽结束后的持久化。
   })
+})
+
+app.on('before-quit', () => {
+  stopWakeWordListener()
 })
 
 app.on('window-all-closed', () => {

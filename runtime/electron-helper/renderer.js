@@ -256,6 +256,7 @@ let actionOrderIndex = 0
 let idleDelayTimer = null
 // 情绪：mood -100~100（负=低落，正=开心），energy 0~100，anxiety 0~100，boredom 0~100
 let emotion = { mood: 0, energy: 100, anxiety: 0, boredom: 0 }
+let wakeWordEnabled = false
 
 // ---------- 工具 ----------
 const randomBetween = (min, max) => Math.floor(min + Math.random() * (max - min))
@@ -1438,6 +1439,16 @@ function renderMainMenu() {
     showManualBubble('我在听…请说指令', '例如：开始番茄钟 / 喂食 / 余额', 4000)
     window.petBridge.startVoice()
   })
+  addMenuButton(wakeWordEnabled ? '关闭语音唤醒' : '开启语音唤醒', () => {
+    menuEl.classList.remove('visible')
+    updateClickThrough()
+    window.petBridge.toggleWakeWord()
+    showManualBubble(
+      wakeWordEnabled ? '语音唤醒已关闭' : '语音唤醒已开启',
+      wakeWordEnabled ? '' : '说“大肥鱼+指令”，例如：大肥鱼开始番茄钟',
+      3000,
+    )
+  })
   addMenuButton('设置…', () => {
     menuPage = 'settings'
     showMenu(lastMenuPos.x, lastMenuPos.y)
@@ -1849,6 +1860,9 @@ window.petBridge.onStatus((status) => {
 })
 
 window.petBridge.onVoiceResult(handleVoiceCommand)
+window.petBridge.onWakeState((enabled) => {
+  wakeWordEnabled = enabled
+})
 
 // ---------- 启动 ----------
 playIdle()

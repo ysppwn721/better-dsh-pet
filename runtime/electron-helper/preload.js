@@ -42,9 +42,17 @@ contextBridge.exposeInMainWorld('petBridge', {
   startVoice() {
     ipcRenderer.send('pet:voice-start')
   },
+  toggleWakeWord() {
+    ipcRenderer.send('pet:wake-word-toggle')
+  },
   onVoiceResult(callback) {
     const listener = (_event, result) => callback(result)
     ipcRenderer.on('pet:voice-result', listener)
     return () => ipcRenderer.removeListener('pet:voice-result', listener)
+  },
+  onWakeState(callback) {
+    const listener = (_event, enabled) => callback(enabled)
+    ipcRenderer.on('pet:wake-state', listener)
+    return () => ipcRenderer.removeListener('pet:wake-state', listener)
   },
 })
