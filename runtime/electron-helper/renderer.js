@@ -32,6 +32,7 @@ const CONFIG = {
   voiceAutoSend: params.get('voiceAutoSend') !== '0',
   voiceAutoRecord: params.get('voiceAutoRecord') !== '0',
   holidayEnabled: params.get('holidayEnabled') === '1',
+  festivalSimDate: params.get('festivalSimDate') || '',
 }
 
 // ---------- 资源根 ----------
@@ -524,7 +525,15 @@ function playFestivalGreeting(festival) {
   return true
 }
 
-function getTodayFestival(date = new Date()) {
+function getCurrentDate() {
+  if (CONFIG.festivalSimDate) {
+    const d = new Date(CONFIG.festivalSimDate + 'T00:00:00')
+    if (!isNaN(d.getTime())) return d
+  }
+  return new Date()
+}
+
+function getTodayFestival(date = getCurrentDate()) {
   return getFestivalMatches(date).at(0) || null
 }
 
@@ -1735,7 +1744,7 @@ function renderSettingsPage() {
   })
   const bubbleStatesText = Array.isArray(CONFIG.bubbleStates) ? CONFIG.bubbleStates.join(', ') : ''
   const todayFestival = getTodayFestival()
-  const todayLunar = getLunarDateParts()
+  const todayLunar = getLunarDateParts(getCurrentDate())
   const festivalButtonLabel = todayFestival ? `播放${todayFestival.label}` : '今日无节日'
   const festivalButtonDisabled = !todayFestival || !CONFIG.holidayEnabled
   let activityLevel = CONFIG.activityLevel
@@ -1777,6 +1786,7 @@ function renderSettingsPage() {
       <div style="font-size:13px;font-weight:600;margin-bottom:6px;color:#333">今日节日</div>
       <div class="ms-field"><span>节日名称</span><strong id="ms-festival-label">${todayFestival ? todayFestival.label : '今日无节日'}</strong></div>
       <div class="ms-field"><span>今日农历</span><strong>${todayLunar.month}${todayLunar.dayText || ''}</strong></div>
+      <div class="ms-field"><span>模拟日期</span><input type="date" id="ms-festivalSimDate" value="${CONFIG.festivalSimDate || ''}"></div>
       <div class="ms-field"><span>节日祝福</span><button id="ms-festival-play" type="button" ${festivalButtonDisabled ? 'disabled' : ''} style="padding:4px 8px;border:1px solid #d8d8d8;border-radius:6px;background:${festivalButtonDisabled ? '#f0f1f4' : '#f5f6f8'};cursor:${festivalButtonDisabled ? 'not-allowed' : 'pointer'}">${festivalButtonLabel}</button></div>
     </div>
   `
@@ -1954,6 +1964,7 @@ function renderSettingsPage() {
     const breakMinutes = number('#ms-breakMinutes', CONFIG.breakMinutes, 1, 60)
     const roastEnabled = val('#ms-roastEnabled').checked
     const holidayEnabled = val('#ms-holidayEnabled').checked
+    const festivalSimDate = val('#ms-festivalSimDate').value.trim()
     const voiceEnabled = val('#ms-voiceEnabled').checked
     const voiceWakeAutoStart = val('#ms-voiceWakeAutoStart').checked
     const voiceSilenceMs = number('#ms-voiceSilenceMs', CONFIG.voiceSilenceMs, 300, 5000)
@@ -1966,6 +1977,7 @@ function renderSettingsPage() {
       petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
       reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
       holidayEnabled,
+      festivalSimDate,
       voiceEnabled,
       voiceWakeAutoStart,
       voiceSilenceMs,
@@ -1985,6 +1997,7 @@ function renderSettingsPage() {
       petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
       reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
       holidayEnabled,
+      festivalSimDate,
       voiceEnabled,
       voiceWakeAutoStart,
       voiceSilenceMs,
@@ -2397,6 +2410,7 @@ function applyStatus(incoming) {
     CONFIG.voiceAutoSend = incoming.config.voiceAutoSend !== false
     CONFIG.voiceAutoRecord = incoming.config.voiceAutoRecord !== false
     CONFIG.holidayEnabled = incoming.config.holidayEnabled === true
+    CONFIG.festivalSimDate = incoming.config.festivalSimDate || ''
     CONFIG.scale = Number(incoming.config.scale) || CONFIG.scale
     if (!CONFIG.holidayEnabled) stopFestivalPlayback()
     // 播放速度变化立即作用到当前/备用视频。
