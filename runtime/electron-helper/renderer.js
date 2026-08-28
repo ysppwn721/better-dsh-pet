@@ -1674,7 +1674,11 @@ async function handleUserSpeech(text) {
     if (!chatPanel.classList.contains('visible')) openChat()
     const input = chatPanel.querySelector('input')
     const taskBtn = chatPanel.querySelector('#chat-task-send')
-    if (input) input.value = result.task || content
+    if (input) {
+      input.value = result.task || content
+      input.focus()
+      input.setSelectionRange(input.value.length, input.value.length)
+    }
     if (taskBtn) taskBtn.style.display = 'inline-block'
     if (chatAppendMsg) chatAppendMsg('pet', '已识别为任务，确认无误后点击「执行任务」执行；不想执行可直接修改或清空输入框。')
     return
