@@ -506,17 +506,21 @@ function startFestivalPlayback(festival) {
   return true
 }
 
-function playFestivalGreeting(festival, { auto = false } = {}) {
+function playFestivalGreeting(festival) {
   if (!festival || !CONFIG.holidayEnabled) return false
   stopFestivalPlayback()
+  clearIdleDelay()
+  stopMove()
+  // 直接复用宠物主视频播放节日动画，替换当前画面，而不是在宠物上方叠加
+  currentMode = 'festival'
+  anim = festival.anim || IDLE
+  animOnce = true
+  animLoop = false
+  switchTo(anim, { once: true })
   const title = festival.greeting || festival.label || '节日快乐'
   const detail = festival.detail || '大肥鱼给你送上祝福~'
   showManualBubble(title, detail, 5000)
-  startFestivalPlayback(festival)
   festivalAutoPlayDone = true
-  try {
-    localStorage.setItem(FESTIVAL_AUTO_PLAY_KEY, `${getFestivalAutoPlayDateKey()}|${festival.id}`)
-  } catch {}
   return true
 }
 
@@ -805,6 +809,12 @@ function handleEnded() {
       overlay.animationDone = true
       applyResume()
     }
+    return
+  }
+  if (currentMode === 'festival') {
+    festivalActive = false
+    currentFestival = null
+    scheduleNextIdle()
     return
   }
   if (currentMode === 'click') {
