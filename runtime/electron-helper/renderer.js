@@ -5,6 +5,24 @@
  * Companion 消息，根据 DSH 状态切换动画并显示气泡。
  */
 
+// 调试用：渲染进程出错时在屏幕上显示错误，方便定位“桌宠不显示”的问题。
+window.addEventListener('error', (event) => {
+  try {
+    const div = document.createElement('div')
+    div.style.cssText = 'position:fixed;left:8px;top:8px;z-index:999999;background:rgba(220,50,50,.95);color:#fff;padding:8px 10px;border-radius:6px;font-size:12px;white-space:pre-wrap;max-width:80vw;font-family:monospace'
+    div.textContent = `RENDER ERROR: ${event.message || (event.error && event.error.message) || 'unknown'}`
+    ;(document.body || document.documentElement).appendChild(div)
+  } catch {}
+})
+window.addEventListener('unhandledrejection', (event) => {
+  try {
+    const div = document.createElement('div')
+    div.style.cssText = 'position:fixed;left:8px;top:8px;z-index:999999;background:rgba(220,50,50,.95);color:#fff;padding:8px 10px;border-radius:6px;font-size:12px;white-space:pre-wrap;max-width:80vw;font-family:monospace'
+    div.textContent = `RENDER UNHANDLED: ${event.reason && event.reason.message ? event.reason.message : String(event.reason)}`
+    ;(document.body || document.documentElement).appendChild(div)
+  } catch {}
+})
+
 // ---------- 配置 ----------
 const params = new URLSearchParams(location.search)
 const CONFIG = {
