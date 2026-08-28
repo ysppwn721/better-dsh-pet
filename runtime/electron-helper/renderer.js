@@ -1482,16 +1482,20 @@ function renderChatPanel() {
   const mic = chatPanel.querySelector('#chat-mic')
   if (CONFIG.voiceEnabled === false) mic.style.display = 'none'
   const taskBtn = chatPanel.querySelector('#chat-task-send')
-  taskBtn.onmousedown = async (e) => {
-    e.preventDefault()
+  const setTaskMode = (active) => {
+    taskBtn.style.display = active ? 'inline-block' : 'none'
+    send.style.display = active ? 'none' : 'inline-block'
+  }
+  const runTask = async () => {
     const content = input.value.trim()
     if (!content) return
-    taskBtn.style.display = 'none'
+    setTaskMode(false)
     if (chatAppendMsg) chatAppendMsg('pet', '好的，我来执行任务…')
     const result = await window.petBridge.executeTask(content)
     const reply = result?.result || '任务执行完成'
     if (chatAppendMsg) chatAppendMsg('pet', reply)
   }
+  taskBtn.onmousedown = (e) => { e.preventDefault(); void runTask() }
   const appendMsg = (role, text) => {
     const div = document.createElement('div')
     div.className = `chat-msg ${role}`
@@ -1505,8 +1509,7 @@ function renderChatPanel() {
     const content = String(text || input.value || '').trim()
     if (!content) return
     input.value = ''
-    const taskBtn = chatPanel.querySelector('#chat-task-send')
-    if (taskBtn) taskBtn.style.display = 'none'
+    setTaskMode(false)
     appendMsg('user', content)
     chatMessages.push({ role: 'user', content })
     appendMsg('pet', '正在想…')
@@ -1538,7 +1541,12 @@ function renderChatPanel() {
     }
   }
   send.onmousedown = (e) => { e.preventDefault(); void doSend() }
-  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') void doSend() })
+  input.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    if (taskBtn.style.display !== 'none') void runTask()
+    else void doSend()
+  })
 }
 function openChat() {
   renderChatPanel()
@@ -1679,7 +1687,9 @@ async function handleUserSpeech(text) {
       input.focus()
       input.setSelectionRange(input.value.length, input.value.length)
     }
+    const sendBtn = chatPanel.querySelector('.chat-input-row span:last-child')
     if (taskBtn) taskBtn.style.display = 'inline-block'
+    if (sendBtn) sendBtn.style.display = 'none'
     if (chatAppendMsg) chatAppendMsg('pet', '已识别为任务，确认无误后点击「执行任务」执行；不想执行可直接修改或清空输入框。')
     return
   }
