@@ -33,6 +33,7 @@ const CONFIG = {
   voiceAutoRecord: params.get('voiceAutoRecord') !== '0',
   holidayEnabled: params.get('holidayEnabled') === '1',
   wakeWord: params.get('wakeWord') || '大肥鱼',
+  taskCwd: params.get('taskCwd') || '',
 }
 
 // ---------- 资源根 ----------
@@ -1873,6 +1874,7 @@ function renderSettingsPage() {
     <label class="ms-check"><input type="checkbox" id="ms-voiceAutoSend" ${CONFIG.voiceAutoSend !== false ? 'checked' : ''}> 语音识别后自动发送</label>
     <label class="ms-check"><input type="checkbox" id="ms-voiceAutoRecord" ${CONFIG.voiceAutoRecord !== false ? 'checked' : ''}> 闲聊时说“大肥鱼”自动录音</label>
     <div class="ms-field"><span>唤醒词</span><input type="text" id="ms-wakeWord" value="${CONFIG.wakeWord}" placeholder="例如：大肥鱼"></div>
+    <div class="ms-field"><span>任务目录</span><input type="text" id="ms-taskCwd" value="${CONFIG.taskCwd || ''}" placeholder="留空=用户主目录"></div>
     <div class="ms-field"><span>气泡模式</span><span id="ms-bubbleMode" class="ms-seg"></span></div>
     <div class="ms-field"><span>气泡状态</span><textarea id="ms-bubbleStates" placeholder="SUCCESS,ERROR,WAITING">${bubbleStatesText}</textarea></div>
     <div id="ms-festival-area" style="margin-top:8px;padding-top:8px;border-top:1px solid #eee">
@@ -2057,6 +2059,7 @@ function renderSettingsPage() {
     const roastEnabled = val('#ms-roastEnabled').checked
     const holidayEnabled = val('#ms-holidayEnabled').checked
     const wakeWord = val('#ms-wakeWord').value.trim() || '大肥鱼'
+    const taskCwd = val('#ms-taskCwd').value.trim()
     const voiceEnabled = val('#ms-voiceEnabled').checked
     const voiceWakeAutoStart = val('#ms-voiceWakeAutoStart').checked
     const voiceSilenceMs = number('#ms-voiceSilenceMs', CONFIG.voiceSilenceMs, 300, 5000)
@@ -2070,6 +2073,7 @@ function renderSettingsPage() {
       reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
       holidayEnabled,
       wakeWord,
+      taskCwd,
       voiceEnabled,
       voiceWakeAutoStart,
       voiceSilenceMs,
@@ -2090,6 +2094,7 @@ function renderSettingsPage() {
       reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
       holidayEnabled,
       wakeWord,
+      taskCwd,
       voiceEnabled,
       voiceWakeAutoStart,
       voiceSilenceMs,
@@ -2504,6 +2509,7 @@ function applyStatus(incoming) {
     CONFIG.voiceAutoRecord = incoming.config.voiceAutoRecord !== false
     CONFIG.holidayEnabled = incoming.config.holidayEnabled === true
     CONFIG.wakeWord = incoming.config.wakeWord || CONFIG.wakeWord
+    CONFIG.taskCwd = incoming.config.taskCwd || CONFIG.taskCwd
     CONFIG.scale = Number(incoming.config.scale) || CONFIG.scale
     if (!CONFIG.holidayEnabled) stopFestivalPlayback()
     // 播放速度变化立即作用到当前/备用视频。

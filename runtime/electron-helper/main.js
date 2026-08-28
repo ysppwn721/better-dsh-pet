@@ -513,6 +513,7 @@ function createWindow() {
       voiceAutoRecord: process.env.DSH_PET_VOICE_AUTO_RECORD === '0' ? '0' : '1',
       holidayEnabled: process.env.DSH_PET_HOLIDAY_ENABLED === '1' ? '1' : '0',
       wakeWord: process.env.DSH_PET_WAKE_WORD || '大肥鱼',
+      taskCwd: process.env.DSH_PET_TASK_CWD || '',
     },
   }).then(() => {
     startPolling()

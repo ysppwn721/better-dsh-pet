@@ -47,6 +47,7 @@ export interface Config {
     voiceAutoRecord?: boolean;
     holidayEnabled?: boolean;
     wakeWord?: string;
+    taskCwd?: string;
 }
 
 /**
