@@ -1568,6 +1568,80 @@ async function sendChatText(content) {
   }
 }
 
+function matchRuleCommand(text) {
+  const t = String(text || '')
+  if (t.includes('停止番茄钟')) return 'pomodoro_stop'
+  if (t.includes('开始番茄钟') || t.includes('番茄钟')) return 'pomodoro_start'
+  if (t.includes('喂食') || t.includes('吃饭')) return 'feed'
+  if (t.includes('隐藏')) return 'hide'
+  if (t.includes('关闭') || t.includes('退出')) return 'close'
+  if (t.includes('余额')) return 'balance'
+  if (t.includes('吐槽')) return 'roast'
+  if (t.includes('设置')) return 'settings'
+  if (t.includes('打开') && (t.includes('网页') || t.includes('浏览器') || t.includes('网站'))) return 'open_web'
+  if (t.includes('提醒')) return 'remind'
+  return null
+}
+
+function executeAction(action, args = {}) {
+  switch (action) {
+    case 'pomodoro_start':
+      startPomodoro('work', CONFIG.workMinutes)
+      showManualBubble('收到，开始番茄钟~', `${CONFIG.workMinutes} 分钟`, 3000)
+      return true
+    case 'pomodoro_stop':
+      stopPomodoro()
+      showManualBubble('番茄钟已停止~', '', 2500)
+      return true
+    case 'feed':
+      feedPet()
+      return true
+    case 'hide':
+      window.petBridge.hide()
+      return true
+    case 'close':
+      window.petBridge.close('user')
+      return true
+    case 'balance':
+      window.petBridge.refreshBalance()
+      showManualBubble('正在刷新余额~', '', 2000)
+      return true
+    case 'roast':
+      window.petBridge.requestRoast()
+      return true
+    case 'settings':
+      menuPage = 'settings'
+      showMenu(lastMenuPos.x, lastMenuPos.y)
+      return true
+    case 'open_web':
+      window.petBridge.openWebUi(args.url || CONFIG.webuiUrl)
+      showManualBubble('正在打开…', args.url || CONFIG.webuiUrl || '', 2000)
+      return true
+    case 'remind': {
+      const minutes = Number(args.minutes) || 10
+      const text = args.text || '该做事啦'
+      showManualBubble(`好的，${minutes}分钟后提醒你`, text, 3000)
+      return true
+    }
+    default:
+      return false
+  }
+}
+
+async function handleUserSpeech(text) {
+  const content = String(text || '').trim()
+  if (!content) return
+  // 先走本地规则命令，零 Token、零上下文污染
+  const rule = matchRuleCommand(content)
+  if (rule && executeAction(rule)) return
+  // 再走独立 LLM 意图分类（不带闲聊历史）
+  const result = await window.petBridge.classifyIntent(content)
+  if (result?.type === 'command' && result.action && executeAction(result.action, result.args)) return
+  // 都不是任务 → 进入闲聊（独立上下文）
+  await sendChatText(content)
+}
+
+
 let senseRecording = null
 let senseChunks = []
 
@@ -1681,7 +1755,7 @@ async function stopSenseRecording(autoSend = false) {
     return
   }
   if (autoSend) {
-    await sendChatText(text)
+    await handleUserSpeech(text)
     return
   }
   if (chatPanel && chatPanel.classList.contains('visible')) {

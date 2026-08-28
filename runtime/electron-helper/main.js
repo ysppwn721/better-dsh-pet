@@ -649,6 +649,22 @@ app.whenReady().then(() => {
       return { ok: false, reply: '网络开小差了，等会儿再聊吧~' }
     }
   })
+  ipcMain.handle('pet:intent', async (_event, text) => {
+    const statusUrl = process.env.DSH_PET_STATUS_URL
+    if (!statusUrl || !text) return { ok: false, type: 'chat' }
+    try {
+      const intentUrl = statusUrl.replace(/\/plugins\/better-dsh-pet\/status$/, '/plugins/better-dsh-pet/intent')
+      const response = await fetch(intentUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text }),
+      })
+      const data = await response.json()
+      return data
+    } catch {
+      return { ok: false, type: 'chat' }
+    }
+  })
   ipcMain.handle('pet:transcribe', async (_event, wavBuffer) => {
     const statusUrl = process.env.DSH_PET_STATUS_URL
     if (!statusUrl || !wavBuffer) return { ok: false, text: '' }

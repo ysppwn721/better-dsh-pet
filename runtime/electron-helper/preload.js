@@ -61,6 +61,9 @@ contextBridge.exposeInMainWorld('petBridge', {
   sendChat(message) {
     return ipcRenderer.invoke('pet:chat', message)
   },
+  classifyIntent(text) {
+    return ipcRenderer.invoke('pet:intent', text)
+  },
   startDictation() {
     ipcRenderer.send('pet:dictation-start')
   },
