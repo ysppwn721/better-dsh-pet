@@ -5,24 +5,6 @@
  * Companion 消息，根据 DSH 状态切换动画并显示气泡。
  */
 
-// 调试用：渲染进程出错时在屏幕上显示错误，方便定位“桌宠不显示”的问题。
-window.addEventListener('error', (event) => {
-  try {
-    const div = document.createElement('div')
-    div.style.cssText = 'position:fixed;left:8px;top:8px;z-index:999999;background:rgba(220,50,50,.95);color:#fff;padding:8px 10px;border-radius:6px;font-size:12px;white-space:pre-wrap;max-width:80vw;font-family:monospace'
-    div.textContent = `RENDER ERROR: ${event.message || (event.error && event.error.message) || 'unknown'}`
-    ;(document.body || document.documentElement).appendChild(div)
-  } catch {}
-})
-window.addEventListener('unhandledrejection', (event) => {
-  try {
-    const div = document.createElement('div')
-    div.style.cssText = 'position:fixed;left:8px;top:8px;z-index:999999;background:rgba(220,50,50,.95);color:#fff;padding:8px 10px;border-radius:6px;font-size:12px;white-space:pre-wrap;max-width:80vw;font-family:monospace'
-    div.textContent = `RENDER UNHANDLED: ${event.reason && event.reason.message ? event.reason.message : String(event.reason)}`
-    ;(document.body || document.documentElement).appendChild(div)
-  } catch {}
-})
-
 // ---------- 配置 ----------
 const params = new URLSearchParams(location.search)
 const CONFIG = {
@@ -50,7 +32,6 @@ const CONFIG = {
   voiceAutoSend: params.get('voiceAutoSend') !== '0',
   voiceAutoRecord: params.get('voiceAutoRecord') !== '0',
   holidayEnabled: params.get('holidayEnabled') === '1',
-  wakeWord: params.get('wakeWord') || '大肥鱼',
 }
 
 // ---------- 资源根 ----------
@@ -190,12 +171,7 @@ const EMOTION_DELTAS = {
   stateError: { mood: -10, energy: -4, anxiety: 10, boredom: -4 },
 }
 
-let LUNAR_DATE_FORMAT = null
-try {
-  LUNAR_DATE_FORMAT = new Intl.DateTimeFormat('zh-CN-u-ca-chinese', { month: 'numeric', day: 'numeric' })
-} catch {
-  LUNAR_DATE_FORMAT = null
-}
+const LUNAR_DATE_FORMAT = new Intl.DateTimeFormat('zh-CN-u-ca-chinese', { month: 'numeric', day: 'numeric' })
 const LUNAR_MONTH_NAMES = ['正月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '冬月', '腊月']
 const FESTIVAL_AUTO_PLAY_KEY = 'better-dsh-pet:festival-auto-play'
 const FESTIVAL_DEFS = [
@@ -250,16 +226,9 @@ function normalizeLunarMonth(value) {
 }
 
 function getLunarDateParts(date = new Date()) {
-  if (!LUNAR_DATE_FORMAT) {
-    return { month: '', day: 0, dayText: '' }
-  }
   const parts = {}
-  try {
-    for (const part of LUNAR_DATE_FORMAT.formatToParts(date)) {
-      if (part.type !== 'literal') parts[part.type] = part.value
-    }
-  } catch {
-    return { month: '', day: 0, dayText: '' }
+  for (const part of LUNAR_DATE_FORMAT.formatToParts(date)) {
+    if (part.type !== 'literal') parts[part.type] = part.value
   }
   return {
     month: normalizeLunarMonth(parts.month || ''),
@@ -555,11 +524,7 @@ function playFestivalGreeting(festival) {
   return true
 }
 
-function getCurrentDate() {
-  return new Date()
-}
-
-function getTodayFestival(date = getCurrentDate()) {
+function getTodayFestival(date = new Date()) {
   return getFestivalMatches(date).at(0) || null
 }
 
@@ -1770,7 +1735,7 @@ function renderSettingsPage() {
   })
   const bubbleStatesText = Array.isArray(CONFIG.bubbleStates) ? CONFIG.bubbleStates.join(', ') : ''
   const todayFestival = getTodayFestival()
-  const todayLunar = getLunarDateParts(getCurrentDate())
+  const todayLunar = getLunarDateParts()
   const festivalButtonLabel = todayFestival ? `播放${todayFestival.label}` : '今日无节日'
   const festivalButtonDisabled = !todayFestival || !CONFIG.holidayEnabled
   let activityLevel = CONFIG.activityLevel
@@ -1805,8 +1770,7 @@ function renderSettingsPage() {
     <label class="ms-check"><input type="checkbox" id="ms-voiceWakeAutoStart" ${CONFIG.voiceWakeAutoStart ? 'checked' : ''}> 启动时自动开启语音唤醒</label>
     <div class="ms-field"><span>断句静音</span><input type="range" id="ms-voiceSilenceMs" min="300" max="5000" step="100" value="${CONFIG.voiceSilenceMs}"><em id="ms-voiceSilenceMs-val">${CONFIG.voiceSilenceMs}ms</em></div>
     <label class="ms-check"><input type="checkbox" id="ms-voiceAutoSend" ${CONFIG.voiceAutoSend !== false ? 'checked' : ''}> 语音识别后自动发送</label>
-    <label class="ms-check"><input type="checkbox" id="ms-voiceAutoRecord" ${CONFIG.voiceAutoRecord !== false ? 'checked' : ''}> 闲聊时自动录音</label>
-    <div class="ms-field"><span>唤醒词</span><input type="text" id="ms-wakeWord" value="${CONFIG.wakeWord}" placeholder="例如：大肥鱼"></div>
+    <label class="ms-check"><input type="checkbox" id="ms-voiceAutoRecord" ${CONFIG.voiceAutoRecord !== false ? 'checked' : ''}> 闲聊时说“大肥鱼”自动录音</label>
     <div class="ms-field"><span>气泡模式</span><span id="ms-bubbleMode" class="ms-seg"></span></div>
     <div class="ms-field"><span>气泡状态</span><textarea id="ms-bubbleStates" placeholder="SUCCESS,ERROR,WAITING">${bubbleStatesText}</textarea></div>
     <div id="ms-festival-area" style="margin-top:8px;padding-top:8px;border-top:1px solid #eee">
@@ -1990,7 +1954,6 @@ function renderSettingsPage() {
     const breakMinutes = number('#ms-breakMinutes', CONFIG.breakMinutes, 1, 60)
     const roastEnabled = val('#ms-roastEnabled').checked
     const holidayEnabled = val('#ms-holidayEnabled').checked
-    const wakeWord = val('#ms-wakeWord').value.trim() || '大肥鱼'
     const voiceEnabled = val('#ms-voiceEnabled').checked
     const voiceWakeAutoStart = val('#ms-voiceWakeAutoStart').checked
     const voiceSilenceMs = number('#ms-voiceSilenceMs', CONFIG.voiceSilenceMs, 300, 5000)
@@ -2003,7 +1966,6 @@ function renderSettingsPage() {
       petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
       reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
       holidayEnabled,
-      wakeWord,
       voiceEnabled,
       voiceWakeAutoStart,
       voiceSilenceMs,
@@ -2023,7 +1985,6 @@ function renderSettingsPage() {
       petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
       reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
       holidayEnabled,
-      wakeWord,
       voiceEnabled,
       voiceWakeAutoStart,
       voiceSilenceMs,
@@ -2436,7 +2397,6 @@ function applyStatus(incoming) {
     CONFIG.voiceAutoSend = incoming.config.voiceAutoSend !== false
     CONFIG.voiceAutoRecord = incoming.config.voiceAutoRecord !== false
     CONFIG.holidayEnabled = incoming.config.holidayEnabled === true
-    CONFIG.wakeWord = incoming.config.wakeWord || CONFIG.wakeWord
     CONFIG.scale = Number(incoming.config.scale) || CONFIG.scale
     if (!CONFIG.holidayEnabled) stopFestivalPlayback()
     // 播放速度变化立即作用到当前/备用视频。
@@ -2539,9 +2499,8 @@ async function handleVoiceCommand(text) {
     showManualBubble('没听清，再说一次吧~', '', 2500)
     return
   }
-  // 闲聊框打开时，只说唤醒词就自动开始录音（可关闭）
-  const wake = CONFIG.wakeWord || '大肥鱼'
-  if (CONFIG.voiceAutoRecord !== false && (command === wake || command === `嗨${wake}`) && chatPanel.classList.contains('visible')) {
+  // 闲聊框打开时，只说“大肥鱼”就自动开始录音（可关闭）
+  if (CONFIG.voiceAutoRecord !== false && (command === '大肥鱼' || command === '嗨大肥鱼') && chatPanel.classList.contains('visible')) {
     if (!senseRecording) {
       showManualBubble('我在，请说~', '', 1500)
       try {

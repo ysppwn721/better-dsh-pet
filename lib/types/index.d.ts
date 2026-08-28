@@ -74,8 +74,6 @@ export interface Config {
     voiceAutoRecord?: boolean;
     /** 启用节日祝福识别（阳历与农历）。默认 false。 */
     holidayEnabled?: boolean;
-    /** 语音唤醒词。默认“大肥鱼”。 */
-    wakeWord?: string;
     /** 旧版 /pet 路由的 full 资源根目录。 */
     fullRoot?: string;
     /** Helper 进程选项。 */

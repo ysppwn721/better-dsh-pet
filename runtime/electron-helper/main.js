@@ -391,26 +391,24 @@ try {
   $culture = [System.Globalization.CultureInfo]::GetCultureInfo('zh-CN')
   $recognizer = New-Object System.Speech.Recognition.SpeechRecognitionEngine($culture)
   $recognizer.SetInputToDefaultAudioDevice()
-  $wake = $env:DSH_PET_WAKE_WORD
-  if (-not $wake) { $wake = '大肥鱼' }
   $choices = New-Object System.Speech.Recognition.Choices
-  $choices.Add("${wake}开始番茄钟")
-  $choices.Add("嗨${wake}开始番茄钟")
-  $choices.Add("${wake}开始休息")
-  $choices.Add("嗨${wake}开始休息")
-  $choices.Add("${wake}停止番茄钟")
-  $choices.Add("${wake}喂食")
-  $choices.Add("${wake}隐藏")
-  $choices.Add("${wake}关闭")
-  $choices.Add("${wake}余额")
-  $choices.Add("${wake}吐槽")
-  $choices.Add("${wake}设置")
-  $choices.Add("${wake}你在吗")
-  $choices.Add("${wake}在吗")
-  $choices.Add("嗨${wake}你在吗")
-  $choices.Add("${wake}出来")
-  $choices.Add("${wake}")
-  $choices.Add("嗨${wake}")
+  $choices.Add('大肥鱼开始番茄钟')
+  $choices.Add('嗨大肥鱼开始番茄钟')
+  $choices.Add('大肥鱼开始休息')
+  $choices.Add('嗨大肥鱼开始休息')
+  $choices.Add('大肥鱼停止番茄钟')
+  $choices.Add('大肥鱼喂食')
+  $choices.Add('大肥鱼隐藏')
+  $choices.Add('大肥鱼关闭')
+  $choices.Add('大肥鱼余额')
+  $choices.Add('大肥鱼吐槽')
+  $choices.Add('大肥鱼设置')
+  $choices.Add('大肥鱼你在吗')
+  $choices.Add('大肥鱼在吗')
+  $choices.Add('嗨大肥鱼你在吗')
+  $choices.Add('大肥鱼出来')
+  $choices.Add('大肥鱼')
+  $choices.Add('嗨大肥鱼')
   $grammar = New-Object System.Speech.Recognition.Grammar($choices)
   $recognizer.LoadGrammar($grammar)
   while ($true) {
@@ -476,6 +474,7 @@ function createWindow() {
     skipTaskbar: true,
     resizable: false,
     hasShadow: false,
+    focusable: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -509,7 +508,6 @@ function createWindow() {
       voiceAutoSend: process.env.DSH_PET_VOICE_AUTO_SEND === '0' ? '0' : '1',
       voiceAutoRecord: process.env.DSH_PET_VOICE_AUTO_RECORD === '0' ? '0' : '1',
       holidayEnabled: process.env.DSH_PET_HOLIDAY_ENABLED === '1' ? '1' : '0',
-      wakeWord: process.env.DSH_PET_WAKE_WORD || '大肥鱼',
     },
   }).then(() => {
     startPolling()
