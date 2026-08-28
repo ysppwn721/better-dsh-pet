@@ -815,6 +815,7 @@ function handleEnded() {
     festivalActive = false
     currentFestival = null
     scheduleNextIdle()
+    updateBubble()
     return
   }
   if (currentMode === 'click') {
