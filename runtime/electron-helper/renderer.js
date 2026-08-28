@@ -1570,16 +1570,21 @@ async function sendChatText(content) {
 
 function matchRuleCommand(text) {
   const t = String(text || '')
-  if (t.includes('停止番茄钟')) return 'pomodoro_stop'
-  if (t.includes('开始番茄钟') || t.includes('番茄钟')) return 'pomodoro_start'
-  if (t.includes('喂食') || t.includes('吃饭')) return 'feed'
-  if (t.includes('隐藏')) return 'hide'
-  if (t.includes('关闭') || t.includes('退出')) return 'close'
-  if (t.includes('余额')) return 'balance'
-  if (t.includes('吐槽')) return 'roast'
-  if (t.includes('设置')) return 'settings'
-  if (t.includes('打开') && (t.includes('网页') || t.includes('浏览器') || t.includes('网站'))) return 'open_web'
-  if (t.includes('提醒')) return 'remind'
+  if (t.includes('停止番茄钟')) return { action: 'pomodoro_stop' }
+  if (t.includes('开始番茄钟') || t.includes('番茄钟')) return { action: 'pomodoro_start' }
+  if (t.includes('喂食') || t.includes('吃饭')) return { action: 'feed' }
+  if (t.includes('隐藏')) return { action: 'hide' }
+  if (t.includes('关闭') || t.includes('退出')) return { action: 'close' }
+  if (t.includes('余额')) return { action: 'balance' }
+  if (t.includes('吐槽')) return { action: 'roast' }
+  if (t.includes('设置')) return { action: 'settings' }
+  if (t.includes('打开') && (t.includes('网页') || t.includes('浏览器') || t.includes('网站'))) return { action: 'open_web' }
+  if (t.includes('提醒')) return { action: 'remind' }
+  if (t.includes('左边') || t.includes('左侧') || t.includes('左面')) return { action: 'move_pet', args: { position: 'left' } }
+  if (t.includes('右边') || t.includes('右侧') || t.includes('右面')) return { action: 'move_pet', args: { position: 'right' } }
+  if (t.includes('中间') || t.includes('居中')) return { action: 'move_pet', args: { position: 'center' } }
+  if (t.includes('上面') || t.includes('顶部') || t.includes('上方')) return { action: 'move_pet', args: { position: 'top' } }
+  if (t.includes('下面') || t.includes('底部') || t.includes('下方')) return { action: 'move_pet', args: { position: 'bottom' } }
   return null
 }
 
@@ -1617,6 +1622,20 @@ function executeAction(action, args = {}) {
       window.petBridge.openWebUi(args.url || CONFIG.webuiUrl)
       showManualBubble('正在打开…', args.url || CONFIG.webuiUrl || '', 2000)
       return true
+    case 'move_pet': {
+      const position = args.position || 'left'
+      const minX = -(HIT_BOX.x0 / 640 * size)
+      const maxX = window.innerWidth - (HIT_BOX.x1 / 640 * size)
+      const maxY = window.innerHeight - size * 9 / 16
+      if (position === 'left') petPos.x = minX
+      else if (position === 'right') petPos.x = maxX
+      else if (position === 'center') petPos.x = Math.max(minX, Math.min(maxX, (window.innerWidth - size) / 2))
+      else if (position === 'top') petPos.y = 0
+      else if (position === 'bottom') petPos.y = maxY
+      applyPetPosition()
+      showManualBubble('好的，我挪过去~', position, 2000)
+      return true
+    }
     case 'remind': {
       const minutes = Number(args.minutes) || 10
       const text = args.text || '该做事啦'
@@ -1633,7 +1652,7 @@ async function handleUserSpeech(text) {
   if (!content) return
   // 先走本地规则命令，零 Token、零上下文污染
   const rule = matchRuleCommand(content)
-  if (rule && executeAction(rule)) return
+  if (rule && executeAction(rule.action, rule.args)) return
   // 再走独立 LLM 意图分类（不带闲聊历史）
   const result = await window.petBridge.classifyIntent(content)
   if (result?.type === 'command' && result.action && executeAction(result.action, result.args)) return
