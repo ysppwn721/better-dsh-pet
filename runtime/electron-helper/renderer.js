@@ -233,6 +233,7 @@ function getLunarDateParts(date = new Date()) {
   return {
     month: normalizeLunarMonth(parts.month || ''),
     day: parseLunarNumber(parts.day || 0),
+    dayText: parts.day || '',
   }
 }
 
@@ -480,22 +481,7 @@ function startFestivalPlayback(festival) {
   const token = ++festivalPlayToken
   festivalActive = true
   currentFestival = festival
-  const useGif = Boolean(festival.gif)
-  if (useGif) {
-    festivalVideo.pause()
-    festivalVideo.removeAttribute('src')
-    festivalVideo.load()
-    festivalImage.src = getFestivalAssetUrl(festival.gif)
-    festivalImage.style.opacity = '1'
-    festivalVideo.style.opacity = '0'
-    festivalImage.classList.add('is-front')
-    festivalVideo.classList.remove('is-front')
-    if (festivalTimer) clearTimeout(festivalTimer)
-    festivalTimer = setTimeout(() => {
-      if (festivalPlayToken === token) stopFestivalPlayback()
-    }, FESTIVAL_GIF_DISPLAY_MS)
-    return true
-  }
+  // 统一使用 WebM 动画播放节日祝福（包内不包含 GIF 资源，避免左上角裂图）
   festivalImage.removeAttribute('src')
   festivalImage.style.opacity = '0'
   festivalVideo.src = assetUrl(festival.anim || IDLE)
@@ -548,12 +534,8 @@ function syncFestivalAutoPlay() {
     festivalAutoPlayDone = false
     return null
   }
-  const todayKey = `${getFestivalAutoPlayDateKey()}|${festival.id}`
-  try {
-    festivalAutoPlayDone = localStorage.getItem(FESTIVAL_AUTO_PLAY_KEY) === todayKey
-  } catch {
-    festivalAutoPlayDone = false
-  }
+  // 每次启动都播放节日祝福，不再限制“每天只播一次”
+  festivalAutoPlayDone = false
   return festival
 }
 
@@ -1742,6 +1724,7 @@ function renderSettingsPage() {
   })
   const bubbleStatesText = Array.isArray(CONFIG.bubbleStates) ? CONFIG.bubbleStates.join(', ') : ''
   const todayFestival = getTodayFestival()
+  const todayLunar = getLunarDateParts()
   const festivalButtonLabel = todayFestival ? `播放${todayFestival.label}` : '今日无节日'
   const festivalButtonDisabled = !todayFestival || !CONFIG.holidayEnabled
   let activityLevel = CONFIG.activityLevel
@@ -1782,6 +1765,7 @@ function renderSettingsPage() {
     <div id="ms-festival-area" style="margin-top:8px;padding-top:8px;border-top:1px solid #eee">
       <div style="font-size:13px;font-weight:600;margin-bottom:6px;color:#333">今日节日</div>
       <div class="ms-field"><span>节日名称</span><strong id="ms-festival-label">${todayFestival ? todayFestival.label : '今日无节日'}</strong></div>
+      <div class="ms-field"><span>今日农历</span><strong>${todayLunar.month}${todayLunar.dayText || ''}</strong></div>
       <div class="ms-field"><span>节日祝福</span><button id="ms-festival-play" type="button" ${festivalButtonDisabled ? 'disabled' : ''} style="padding:4px 8px;border:1px solid #d8d8d8;border-radius:6px;background:${festivalButtonDisabled ? '#f0f1f4' : '#f5f6f8'};cursor:${festivalButtonDisabled ? 'not-allowed' : 'pointer'}">${festivalButtonLabel}</button></div>
     </div>
   `
