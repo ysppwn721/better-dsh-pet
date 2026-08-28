@@ -47,4 +47,5 @@
         voiceAutoSend: true       # 语音识别后自动发送
         voiceAutoRecord: true     # 闲聊时说“大肥鱼”自动开始录音
         wakeWord: '大肥鱼'        # 语音唤醒词
+        holidayEnabled: false     # 启用节日祝福（阳历与农历）
         taskCwd: ''               # 复杂任务工作目录（留空=用户主目录）

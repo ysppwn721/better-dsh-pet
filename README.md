@@ -4,7 +4,7 @@
 
 **一只住在 Windows 桌面上的大肥鱼，由 DeepSeek Harness 真实工作状态驱动。**
 
-透明 · 置顶 · 会吐槽 · 会番茄钟 · 会喂食 · 会陪你干活
+透明 · 置顶 · 会吐槽 · 会番茄钟 · 会喂食 · 会语音 · 会执行任务 · 会陪你干活
 
 <br/>
 
@@ -36,7 +36,9 @@
 - 🪟 使用 **独立透明置顶窗口** 运行，不占用 DSH 网页界面
 - 🧠 能感知 DSH 的真实工作状态：思考 / 工作 / 等待 / 完成 / 出错
 - 🎞️ 内置 **91 个透明动画**，全部开箱即用
-- 🎛️ 提供大量自定义玩法：动作选择、播放顺序、移动频率、番茄钟、喂食、吐槽、余额显示
+- 🎙️ 支持 **本地语音识别 / 语音唤醒 / 语音闲聊**（SenseVoice，离线运行）
+- 🤖 识别到任务时**填入输入框手动确认**，再在 DSH 中开启真实会话执行
+- 🎛️ 提供大量自定义玩法：动作选择、播放顺序、移动频率、番茄钟、喂食、吐槽、余额、节日、情绪系统
 
 > 简单说：**DSH 在干活，大肥鱼在陪你。**
 
@@ -90,6 +92,41 @@
 - 每次对话结束后自动刷新
 - 每 5 分钟定时刷新
 - 点击余额气泡可手动刷新
+
+### 🎙️ 语音聊天与唤醒
+
+- 本地 SenseVoice 语音识别（`sherpa-onnx-node`，无需联网）
+- 可自定义唤醒词，默认“大肥鱼”
+- 说“大肥鱼 + 指令”即可控制：喂食、番茄钟、余额、闲聊
+- 语音识别为任务时，**不会自动发送**，而是填入输入框并显示「执行任务」按钮，等你确认后再执行，避免误识别白烧 Token
+- 支持自动录音、断句静音时长、自动发送开关
+
+### 🤖 真实任务执行
+
+- 识别到复杂任务后，在 DSH 中**新建真实会话**执行（方案三）
+- 可配置任务工作目录（`taskCwd`，留空默认用户主目录）
+- 任务执行前需要手动点击「执行任务」确认
+- 任务会话被归档时会自动停止，避免“以为关了还在跑”烧 Token
+
+### 🎭 情绪系统
+
+- 心情 / 精力 / 焦虑 / 无聊 四维情绪
+- 互动、喂食、番茄钟、DSH 状态都会影响情绪
+- 情绪会改变空闲动作和气泡文案
+- 情绪值自动保存，重新打开桌宠不会重置
+
+### 📅 节日模式
+
+- 支持阳历 + 农历节日识别
+- 可一键播放节日祝福动画
+- 可开启节日自动播放
+
+### 🖥️ 系统托盘与看门狗
+
+- 系统托盘图标：显示 / 隐藏 / 退出
+- 置顶看门狗：定期重新置顶，防止被资源管理器 / 全屏应用顶掉
+- 全屏自动隐藏：仅在全屏游戏 / 视频时自动隐藏，不影响日常使用
+- Helper 看门狗：桌宠进程意外退出后自动重新拉起
 
 ### 🍅 番茄钟
 
@@ -205,10 +242,12 @@ dsh plugin --profile web add better-dsh-pet
 > 如果刚发布新版本不到 24 小时，pnpm 11 的 `minimumReleaseAge` 安全策略可能不会自动选最新版，而是退回旧版。此时请指定精确版本安装：
 >
 > ```bash
-> dsh plugin --profile web add better-dsh-pet@0.2.6
+> dsh plugin --profile web add better-dsh-pet@0.3.0
 > ```
 >
 > pnpm 会自动把该版本加入 `minimumReleaseAgeExclude` 并完成安装；也可以等待 24 小时后直接用上面的普通命令。
+>
+> 首次启动会自动下载 Electron 到 `~/.dsh/electron/`，无需手动安装。
 
 ### 启动
 
@@ -232,16 +271,16 @@ dsh plugin --profile web remove better-dsh-pet
 
 | 菜单项 | 作用 |
 |---|---|
+| 情绪状态 | 实时显示心情 / 精力 / 焦虑 / 无聊 |
 | 喂食 | 播放吃饭动画 + 感谢气泡 |
 | 开始番茄钟 / 开始短休息 | 启动番茄钟 |
 | 停止番茄钟 | 停止当前番茄钟 |
-| 番茄钟设置 | 设置工作时长 / 休息时长 |
-| 行为设置 | 设置大小、移动频率、动作切换间隔 |
-| 选择待机动作 | 勾选要播放的动作（悬停展开） |
-| 开启/关闭行走 | 切换是否走动 |
-| 开启/关闭自动吐槽 | 切换自动吐槽 |
 | 让大肥鱼吐槽一下 | 手动生成一条吐槽 |
-| 打开 DSH 桌面版 | 打开 DSH 桌面客户端 |
+| 语音控制 | 开始一次语音指令识别 |
+| 开启/关闭语音唤醒 | 切换“大肥鱼 + 指令”唤醒 |
+| 闲聊 | 打开聊天面板，支持语音 / 文字 / 任务确认 |
+| 检查更新 | 检查 GitHub 新版本 |
+| 设置… | 打开完整设置页（外观、动作、番茄钟、语音、任务目录、节日等） |
 | 本次隐藏 | 隐藏本次大肥鱼 |
 | 本次关闭 | 关闭本次大肥鱼 |
 
@@ -269,11 +308,20 @@ dsh plugin --profile web remove better-dsh-pet
 | `walkEnabled` | 是否允许走动 | `true` |
 | `moveChance` | 移动频繁度（%） | `20` |
 | `actionDelayMs` | 动作切换间隔（ms） | `0` |
+| `playbackRate` | 动画播放速度（1.0x～2.0x） | `1` |
 | `enabledActions` | 自定义待机动作 | `[]`（全部） |
 | `actionOrder` | 自定义播放顺序 | `[]`（随机） |
 | `roastEnabled` | 自动吐槽（耗 Token） | `false` |
 | `workMinutes` | 番茄钟工作时长 | `25` |
 | `breakMinutes` | 番茄钟休息时长 | `5` |
+| `voiceEnabled` | 启用语音（麦克风） | `true` |
+| `voiceWakeAutoStart` | 启动时自动开启语音唤醒 | `false` |
+| `voiceSilenceMs` | 语音断句静音时长（ms） | `1200` |
+| `voiceAutoSend` | 语音识别后自动发送 | `true` |
+| `voiceAutoRecord` | 闲聊时说唤醒词自动开始录音 | `true` |
+| `wakeWord` | 语音唤醒词 | `大肥鱼` |
+| `holidayEnabled` | 启用节日祝福（阳历 + 农历） | `false` |
+| `taskCwd` | 复杂任务工作目录（留空=用户主目录） | `` |
 
 ---
 
@@ -326,33 +374,22 @@ dsh plugin --profile web remove better-dsh-pet
 
 ### Q：其他电脑需要额外安装 Electron 吗？
 
-需要。
+不需要手动安装。
 
 - 本插件**不打包 Electron**（npm 包体积限制）
-- 桌面 Helper 依赖 Electron 运行
-- 其他电脑上可通过以下方式提供 Electron：
+- 首次启动会自动探测；找不到时自动下载到 `~/.dsh/electron/electron.exe`
+- 也可以通过环境变量指定：
   ```powershell
-  # 方式一：设置环境变量
   $env:DSH_PET_ELECTRON_PATH = "C:\path\to\electron.exe"
-
-  # 方式二：安装 electron 到全局 npm
-  npm install -g electron
   ```
-- 插件也会自动探测常见位置：
-  - `~/.dsh/electron/electron.exe`
-  - `%APPDATA%\npm\node_modules\electron\dist\electron.exe`
-  - `C:\Program Files\Electron\electron.exe`
-  - 当前开发机上的 dsh-desktop-electron 路径（仅本机）
 
 ### Q：插件会在没有 Electron 的电脑上崩溃吗？
 
-不会导致 DSH 崩溃，但桌宠窗口无法显示，日志会提示：
+不会导致 DSH 崩溃。首次启动会自动下载 Electron；如果下载失败，桌宠窗口无法显示，日志会提示：
 
 ```text
 better-dsh-pet: cannot resolve Electron executable.
 ```
-
-所以正式分发给别人前，建议在 README 或安装说明里写明需要 Electron。
 
 ---
 
@@ -367,6 +404,9 @@ npm pack
 
 # 发布前检查
 node scripts/prepack-check.js
+
+# 发布到 npm
+npm publish
 ```
 
 ---
