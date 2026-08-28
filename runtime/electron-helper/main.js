@@ -665,6 +665,22 @@ app.whenReady().then(() => {
       return { ok: false, type: 'chat' }
     }
   })
+  ipcMain.handle('pet:task', async (_event, task) => {
+    const statusUrl = process.env.DSH_PET_STATUS_URL
+    if (!statusUrl || !task) return { ok: false, result: '任务内容为空~' }
+    try {
+      const taskUrl = statusUrl.replace(/\/plugins\/better-dsh-pet\/status$/, '/plugins/better-dsh-pet/task')
+      const response = await fetch(taskUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ task }),
+      })
+      const data = await response.json()
+      return data
+    } catch {
+      return { ok: false, result: '任务执行时网络开小差了~' }
+    }
+  })
   ipcMain.handle('pet:transcribe', async (_event, wavBuffer) => {
     const statusUrl = process.env.DSH_PET_STATUS_URL
     if (!statusUrl || !wavBuffer) return { ok: false, text: '' }

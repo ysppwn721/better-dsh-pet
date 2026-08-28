@@ -64,6 +64,9 @@ contextBridge.exposeInMainWorld('petBridge', {
   classifyIntent(text) {
     return ipcRenderer.invoke('pet:intent', text)
   },
+  executeTask(task) {
+    return ipcRenderer.invoke('pet:task', task)
+  },
   startDictation() {
     ipcRenderer.send('pet:dictation-start')
   },
@@ -71,9 +74,6 @@ contextBridge.exposeInMainWorld('petBridge', {
     const listener = (_event, result) => callback(result)
     ipcRenderer.on('pet:dictation-result', listener)
     return () => ipcRenderer.removeListener('pet:dictation-result', listener)
-  },
-  speak(text) {
-    ipcRenderer.send('pet:speak', text)
   },
   transcribe(wavBuffer) {
     return ipcRenderer.invoke('pet:transcribe', wavBuffer)

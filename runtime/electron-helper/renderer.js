@@ -1502,7 +1502,7 @@ function renderChatPanel() {
     if (last) last.textContent = reply
     chatMessages.push({ role: 'assistant', content: reply })
     messagesEl.scrollTop = messagesEl.scrollHeight
-    window.petBridge.speak(reply)
+
   }
   mic.onmousedown = async (e) => {
     e.preventDefault()
@@ -1554,7 +1554,6 @@ async function sendChatText(content) {
     if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight
   }
   chatMessages.push({ role: 'assistant', content: reply })
-  window.petBridge.speak(reply)
   // 连续对话：回复播完后自动开始听下一句
   if (CONFIG.voiceAutoRecord !== false && CONFIG.voiceEnabled !== false && chatPanel.classList.contains('visible') && !senseRecording) {
     setTimeout(async () => {
@@ -1656,6 +1655,15 @@ async function handleUserSpeech(text) {
   // 再走独立 LLM 意图分类（不带闲聊历史）
   const result = await window.petBridge.classifyIntent(content)
   if (result?.type === 'command' && result.action && executeAction(result.action, result.args)) return
+  // 复杂任务：交给独立任务执行（方案三，当前为隔离 LLM 执行）
+  if (result?.type === 'task' || (result?.type === 'command' && result.action)) {
+    const taskText = result.task || content
+    if (chatAppendMsg) chatAppendMsg('pet', '好的，我来处理这个任务…')
+    const taskResult = await window.petBridge.executeTask(taskText)
+    const reply = taskResult?.result || '任务执行完成'
+    if (chatAppendMsg) chatAppendMsg('pet', reply)
+    return
+  }
   // 都不是任务 → 进入闲聊（独立上下文）
   await sendChatText(content)
 }
@@ -1819,7 +1827,6 @@ async function handleDictationResult(text) {
     if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight
   }
   chatMessages.push({ role: 'assistant', content: reply })
-  window.petBridge.speak(reply)
 }
 
 function renderSettingsPage() {
