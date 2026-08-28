@@ -46,3 +46,4 @@
         voiceSilenceMs: 1200      # 语音断句静音时长（毫秒）
         voiceAutoSend: true       # 语音识别后自动发送
         voiceAutoRecord: true     # 闲聊时说“大肥鱼”自动开始录音
+        wakeWord: '大肥鱼'        # 语音唤醒词

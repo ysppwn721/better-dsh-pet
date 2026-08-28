@@ -32,6 +32,7 @@ const CONFIG = {
   voiceAutoSend: params.get('voiceAutoSend') !== '0',
   voiceAutoRecord: params.get('voiceAutoRecord') !== '0',
   holidayEnabled: params.get('holidayEnabled') === '1',
+  wakeWord: params.get('wakeWord') || '大肥鱼',
 }
 
 // ---------- 资源根 ----------
@@ -1771,6 +1772,7 @@ function renderSettingsPage() {
     <div class="ms-field"><span>断句静音</span><input type="range" id="ms-voiceSilenceMs" min="300" max="5000" step="100" value="${CONFIG.voiceSilenceMs}"><em id="ms-voiceSilenceMs-val">${CONFIG.voiceSilenceMs}ms</em></div>
     <label class="ms-check"><input type="checkbox" id="ms-voiceAutoSend" ${CONFIG.voiceAutoSend !== false ? 'checked' : ''}> 语音识别后自动发送</label>
     <label class="ms-check"><input type="checkbox" id="ms-voiceAutoRecord" ${CONFIG.voiceAutoRecord !== false ? 'checked' : ''}> 闲聊时说“大肥鱼”自动录音</label>
+    <div class="ms-field"><span>唤醒词</span><input type="text" id="ms-wakeWord" value="${CONFIG.wakeWord}" placeholder="例如：大肥鱼"></div>
     <div class="ms-field"><span>气泡模式</span><span id="ms-bubbleMode" class="ms-seg"></span></div>
     <div class="ms-field"><span>气泡状态</span><textarea id="ms-bubbleStates" placeholder="SUCCESS,ERROR,WAITING">${bubbleStatesText}</textarea></div>
     <div id="ms-festival-area" style="margin-top:8px;padding-top:8px;border-top:1px solid #eee">
@@ -1954,6 +1956,7 @@ function renderSettingsPage() {
     const breakMinutes = number('#ms-breakMinutes', CONFIG.breakMinutes, 1, 60)
     const roastEnabled = val('#ms-roastEnabled').checked
     const holidayEnabled = val('#ms-holidayEnabled').checked
+    const wakeWord = val('#ms-wakeWord').value.trim() || '大肥鱼'
     const voiceEnabled = val('#ms-voiceEnabled').checked
     const voiceWakeAutoStart = val('#ms-voiceWakeAutoStart').checked
     const voiceSilenceMs = number('#ms-voiceSilenceMs', CONFIG.voiceSilenceMs, 300, 5000)
@@ -1966,6 +1969,7 @@ function renderSettingsPage() {
       petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
       reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
       holidayEnabled,
+      wakeWord,
       voiceEnabled,
       voiceWakeAutoStart,
       voiceSilenceMs,
@@ -1985,6 +1989,7 @@ function renderSettingsPage() {
       petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
       reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
       holidayEnabled,
+      wakeWord,
       voiceEnabled,
       voiceWakeAutoStart,
       voiceSilenceMs,
@@ -2397,6 +2402,7 @@ function applyStatus(incoming) {
     CONFIG.voiceAutoSend = incoming.config.voiceAutoSend !== false
     CONFIG.voiceAutoRecord = incoming.config.voiceAutoRecord !== false
     CONFIG.holidayEnabled = incoming.config.holidayEnabled === true
+    CONFIG.wakeWord = incoming.config.wakeWord || CONFIG.wakeWord
     CONFIG.scale = Number(incoming.config.scale) || CONFIG.scale
     if (!CONFIG.holidayEnabled) stopFestivalPlayback()
     // 播放速度变化立即作用到当前/备用视频。
@@ -2500,7 +2506,8 @@ async function handleVoiceCommand(text) {
     return
   }
   // 闲聊框打开时，只说“大肥鱼”就自动开始录音（可关闭）
-  if (CONFIG.voiceAutoRecord !== false && (command === '大肥鱼' || command === '嗨大肥鱼') && chatPanel.classList.contains('visible')) {
+  const wake = CONFIG.wakeWord || '大肥鱼'
+  if (CONFIG.voiceAutoRecord !== false && (command === wake || command === `嗨${wake}`) && chatPanel.classList.contains('visible')) {
     if (!senseRecording) {
       showManualBubble('我在，请说~', '', 1500)
       try {
