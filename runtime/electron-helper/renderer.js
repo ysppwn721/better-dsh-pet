@@ -32,7 +32,7 @@ const CONFIG = {
   voiceAutoSend: params.get('voiceAutoSend') !== '0',
   voiceAutoRecord: params.get('voiceAutoRecord') !== '0',
   holidayEnabled: params.get('holidayEnabled') === '1',
-  festivalSimDate: params.get('festivalSimDate') || '',
+  wakeWord: params.get('wakeWord') || '大肥鱼',
 }
 
 // ---------- 资源根 ----------
@@ -526,10 +526,6 @@ function playFestivalGreeting(festival) {
 }
 
 function getCurrentDate() {
-  if (CONFIG.festivalSimDate) {
-    const d = new Date(CONFIG.festivalSimDate + 'T00:00:00')
-    if (!isNaN(d.getTime())) return d
-  }
   return new Date()
 }
 
@@ -1779,14 +1775,14 @@ function renderSettingsPage() {
     <label class="ms-check"><input type="checkbox" id="ms-voiceWakeAutoStart" ${CONFIG.voiceWakeAutoStart ? 'checked' : ''}> 启动时自动开启语音唤醒</label>
     <div class="ms-field"><span>断句静音</span><input type="range" id="ms-voiceSilenceMs" min="300" max="5000" step="100" value="${CONFIG.voiceSilenceMs}"><em id="ms-voiceSilenceMs-val">${CONFIG.voiceSilenceMs}ms</em></div>
     <label class="ms-check"><input type="checkbox" id="ms-voiceAutoSend" ${CONFIG.voiceAutoSend !== false ? 'checked' : ''}> 语音识别后自动发送</label>
-    <label class="ms-check"><input type="checkbox" id="ms-voiceAutoRecord" ${CONFIG.voiceAutoRecord !== false ? 'checked' : ''}> 闲聊时说“大肥鱼”自动录音</label>
+    <label class="ms-check"><input type="checkbox" id="ms-voiceAutoRecord" ${CONFIG.voiceAutoRecord !== false ? 'checked' : ''}> 闲聊时自动录音</label>
+    <div class="ms-field"><span>唤醒词</span><input type="text" id="ms-wakeWord" value="${CONFIG.wakeWord}" placeholder="例如：大肥鱼"></div>
     <div class="ms-field"><span>气泡模式</span><span id="ms-bubbleMode" class="ms-seg"></span></div>
     <div class="ms-field"><span>气泡状态</span><textarea id="ms-bubbleStates" placeholder="SUCCESS,ERROR,WAITING">${bubbleStatesText}</textarea></div>
     <div id="ms-festival-area" style="margin-top:8px;padding-top:8px;border-top:1px solid #eee">
       <div style="font-size:13px;font-weight:600;margin-bottom:6px;color:#333">今日节日</div>
       <div class="ms-field"><span>节日名称</span><strong id="ms-festival-label">${todayFestival ? todayFestival.label : '今日无节日'}</strong></div>
       <div class="ms-field"><span>今日农历</span><strong>${todayLunar.month}${todayLunar.dayText || ''}</strong></div>
-      <div class="ms-field"><span>模拟日期</span><input type="date" id="ms-festivalSimDate" value="${CONFIG.festivalSimDate || ''}"></div>
       <div class="ms-field"><span>节日祝福</span><button id="ms-festival-play" type="button" ${festivalButtonDisabled ? 'disabled' : ''} style="padding:4px 8px;border:1px solid #d8d8d8;border-radius:6px;background:${festivalButtonDisabled ? '#f0f1f4' : '#f5f6f8'};cursor:${festivalButtonDisabled ? 'not-allowed' : 'pointer'}">${festivalButtonLabel}</button></div>
     </div>
   `
@@ -1964,7 +1960,7 @@ function renderSettingsPage() {
     const breakMinutes = number('#ms-breakMinutes', CONFIG.breakMinutes, 1, 60)
     const roastEnabled = val('#ms-roastEnabled').checked
     const holidayEnabled = val('#ms-holidayEnabled').checked
-    const festivalSimDate = val('#ms-festivalSimDate').value.trim()
+    const wakeWord = val('#ms-wakeWord').value.trim() || '大肥鱼'
     const voiceEnabled = val('#ms-voiceEnabled').checked
     const voiceWakeAutoStart = val('#ms-voiceWakeAutoStart').checked
     const voiceSilenceMs = number('#ms-voiceSilenceMs', CONFIG.voiceSilenceMs, 300, 5000)
@@ -1977,7 +1973,7 @@ function renderSettingsPage() {
       petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
       reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
       holidayEnabled,
-      festivalSimDate,
+      wakeWord,
       voiceEnabled,
       voiceWakeAutoStart,
       voiceSilenceMs,
@@ -1997,7 +1993,7 @@ function renderSettingsPage() {
       petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
       reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
       holidayEnabled,
-      festivalSimDate,
+      wakeWord,
       voiceEnabled,
       voiceWakeAutoStart,
       voiceSilenceMs,
@@ -2410,7 +2406,7 @@ function applyStatus(incoming) {
     CONFIG.voiceAutoSend = incoming.config.voiceAutoSend !== false
     CONFIG.voiceAutoRecord = incoming.config.voiceAutoRecord !== false
     CONFIG.holidayEnabled = incoming.config.holidayEnabled === true
-    CONFIG.festivalSimDate = incoming.config.festivalSimDate || ''
+    CONFIG.wakeWord = incoming.config.wakeWord || CONFIG.wakeWord
     CONFIG.scale = Number(incoming.config.scale) || CONFIG.scale
     if (!CONFIG.holidayEnabled) stopFestivalPlayback()
     // 播放速度变化立即作用到当前/备用视频。
@@ -2513,8 +2509,9 @@ async function handleVoiceCommand(text) {
     showManualBubble('没听清，再说一次吧~', '', 2500)
     return
   }
-  // 闲聊框打开时，只说“大肥鱼”就自动开始录音（可关闭）
-  if (CONFIG.voiceAutoRecord !== false && (command === '大肥鱼' || command === '嗨大肥鱼') && chatPanel.classList.contains('visible')) {
+  // 闲聊框打开时，只说唤醒词就自动开始录音（可关闭）
+  const wake = CONFIG.wakeWord || '大肥鱼'
+  if (CONFIG.voiceAutoRecord !== false && (command === wake || command === `嗨${wake}`) && chatPanel.classList.contains('visible')) {
     if (!senseRecording) {
       showManualBubble('我在，请说~', '', 1500)
       try {
