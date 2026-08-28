@@ -507,6 +507,7 @@ function createWindow() {
       voiceSilenceMs: process.env.DSH_PET_VOICE_SILENCE_MS || '1200',
       voiceAutoSend: process.env.DSH_PET_VOICE_AUTO_SEND === '0' ? '0' : '1',
       voiceAutoRecord: process.env.DSH_PET_VOICE_AUTO_RECORD === '0' ? '0' : '1',
+      holidayEnabled: process.env.DSH_PET_HOLIDAY_ENABLED === '1' ? '1' : '0',
     },
   }).then(() => {
     startPolling()

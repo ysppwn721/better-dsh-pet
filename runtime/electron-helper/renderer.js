@@ -31,10 +31,12 @@ const CONFIG = {
   voiceSilenceMs: Number(params.get('voiceSilenceMs') || '1200'),
   voiceAutoSend: params.get('voiceAutoSend') !== '0',
   voiceAutoRecord: params.get('voiceAutoRecord') !== '0',
+  holidayEnabled: params.get('holidayEnabled') === '1',
 }
 
 // ---------- 资源根 ----------
 const ASSET_BASE = new URL('../../assets/thumb/', location.href).href
+const FESTIVAL_GIF_BASE = new URL('../../assets/preview/', location.href).href
 const ALARM_URL = new URL('../../assets/alarm.mp3', location.href).href
 
 // ---------- 动画目录 ----------
@@ -169,6 +171,114 @@ const EMOTION_DELTAS = {
   stateError: { mood: -10, energy: -4, anxiety: 10, boredom: -4 },
 }
 
+const LUNAR_DATE_FORMAT = new Intl.DateTimeFormat('zh-CN-u-ca-chinese', { month: 'numeric', day: 'numeric' })
+const LUNAR_MONTH_NAMES = ['正月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '冬月', '腊月']
+const FESTIVAL_AUTO_PLAY_KEY = 'better-dsh-pet:festival-auto-play'
+const FESTIVAL_DEFS = [
+  { id: 'solar-new-year', calendar: 'solar', label: '元旦', greeting: '元旦快乐', detail: '大肥鱼给你送上新年祝福~', month: 1, day: 1, anim: '放烟花' },
+  { id: 'lunar-spring-festival', calendar: 'lunar', label: '春节', greeting: '春节快乐', detail: '大肥鱼给你拜年啦~', month: '正月', day: 1, anim: '写福字' },
+  { id: 'lunar-lantern', calendar: 'lunar', label: '元宵节', greeting: '元宵节快乐', detail: '记得吃碗热乎乎的汤圆~', month: '正月', day: 15, anim: '吃汤圆' },
+  { id: 'solar-labor', calendar: 'solar', label: '劳动节', greeting: '劳动节快乐', detail: '今天也要好好休息一下~', month: 5, day: 1, anim: '轻快记录' },
+  { id: 'solar-childrens', calendar: 'solar', label: '儿童节', greeting: '儿童节快乐', detail: '今天可以多一点开心和胡闹~', month: 6, day: 1, anim: '荡秋千' },
+  { id: 'lunar-dragon-boat', calendar: 'lunar', label: '端午节', greeting: '端午安康', detail: '记得吃粽子、挂香囊~', month: '五月', day: 5, anim: '吃粽子' },
+  { id: 'lunar-qixi', calendar: 'lunar', label: '七夕节', greeting: '七夕快乐', detail: '今天也要甜甜的~', month: '七月', day: 7, anim: '穿针乞巧' },
+  { id: 'lunar-mid-autumn', calendar: 'lunar', label: '中秋节', greeting: '中秋快乐', detail: '一起赏月吃月饼吧~', month: '八月', day: 15, anim: '中秋赏月吃月饼', gif: 'zhongqiu-shangyue-chi-yuebing' },
+  { id: 'lunar-double-ninth', calendar: 'lunar', label: '重阳节', greeting: '重阳节快乐', detail: '记得登高赏菊~', month: '九月', day: 9, anim: '插茱萸赏菊' },
+  { id: 'lunar-laba', calendar: 'lunar', label: '腊八节', greeting: '腊八节快乐', detail: '喝一碗热腊八粥暖暖身~', month: '腊月', day: 8, anim: '吃腊八粥' },
+  { id: 'solar-national', calendar: 'solar', label: '国庆节', greeting: '国庆节快乐', detail: '一起热热闹闹庆祝一下~', month: 10, day: 1, anim: '放烟花' },
+  { id: 'solar-christmas', calendar: 'solar', label: '圣诞节', greeting: '圣诞快乐', detail: '给你送上节日礼物~', month: 12, day: 25, anim: '装点圣诞树' },
+]
+
+function getSolarDateKey(date = new Date()) {
+  return `${date.getMonth() + 1}-${date.getDate()}`
+}
+
+function getFestivalAutoPlayDateKey(date = new Date()) {
+  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`
+}
+
+function parseLunarNumber(value) {
+  const text = String(value || '').replace(/[年月日\s]/g, '').replace(/^初/, '')
+  if (!text) return 0
+  if (/^\d+$/.test(text)) return Number(text)
+  if (text === '正') return 1
+  if (text === '冬') return 11
+  if (text === '腊') return 12
+  const digits = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 }
+  if (text.startsWith('廿')) return 20 + (digits[text.slice(1)] || 0)
+  if (text.startsWith('卅')) return 30 + (digits[text.slice(1)] || 0)
+  const tenIndex = text.indexOf('十')
+  if (tenIndex >= 0) {
+    const tens = tenIndex === 0 ? 1 : (digits[text.slice(0, tenIndex)] || 0)
+    const ones = digits[text.slice(tenIndex + 1)] || 0
+    return tens * 10 + ones
+  }
+  return digits[text] || 0
+}
+
+function normalizeLunarMonth(value) {
+  const raw = String(value || '').trim()
+  const leap = raw.startsWith('闰')
+  const text = leap ? raw.slice(1) : raw
+  const number = parseLunarNumber(text)
+  const name = LUNAR_MONTH_NAMES[number - 1] || text
+  return leap ? `闰${name}` : name
+}
+
+function getLunarDateParts(date = new Date()) {
+  const parts = {}
+  for (const part of LUNAR_DATE_FORMAT.formatToParts(date)) {
+    if (part.type !== 'literal') parts[part.type] = part.value
+  }
+  return {
+    month: normalizeLunarMonth(parts.month || ''),
+    day: parseLunarNumber(parts.day || 0),
+  }
+}
+
+function isLunarNewYearsEve(date = new Date()) {
+  const today = getLunarDateParts(date)
+  if (today.month !== '腊月') return false
+  const tomorrow = new Date(date)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const next = getLunarDateParts(tomorrow)
+  return next.month === '正月' && next.day === 1
+}
+
+function getFestivalMatches(date = new Date()) {
+  const matches = []
+  const solarKey = getSolarDateKey(date)
+  const lunar = getLunarDateParts(date)
+  for (const festival of FESTIVAL_DEFS) {
+    if (festival.calendar === 'solar') {
+      if (solarKey === `${festival.month}-${festival.day}`) matches.push(festival)
+      continue
+    }
+    if (normalizeLunarMonth(festival.month) === lunar.month && festival.day === lunar.day) matches.push(festival)
+  }
+  if (isLunarNewYearsEve(date)) {
+    matches.unshift({
+      id: 'lunar-new-years-eve',
+      calendar: 'lunar',
+      label: '除夕',
+      greeting: '除夕快乐',
+      detail: '今晚一起守岁吧~',
+      month: '腊月',
+      day: 'eve',
+      anim: '放烟花',
+    })
+  }
+  return matches
+}
+
+function getFestivalById(id) {
+  return getFestivalMatches().find((festival) => festival.id === id) || null
+}
+
+function getFestivalAssetUrl(name) {
+  return new URL(encodeURIComponent(name) + '.gif', FESTIVAL_GIF_BASE).href
+}
+
 // ---------- DOM ----------
 const rootEl = document.getElementById('pet-root')
 const stageEl = document.getElementById('pet-stage')
@@ -181,6 +291,20 @@ const bubbleDetail = document.getElementById('bubble-detail')
 const menuEl = document.getElementById('menu')
 const settingsPanel = document.getElementById('settings-panel')
 const chatPanel = document.getElementById('chat-panel')
+const festivalImage = document.createElement('img')
+const festivalVideo = document.createElement('video')
+
+for (const el of [festivalImage, festivalVideo]) {
+  el.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;opacity:0;transition:opacity .18s ease;z-index:2'
+  el.setAttribute('aria-hidden', 'true')
+  el.draggable = false
+}
+festivalVideo.muted = true
+festivalVideo.playsInline = true
+festivalVideo.autoplay = true
+festivalVideo.loop = false
+festivalVideo.preload = 'auto'
+stageEl.append(festivalImage, festivalVideo)
 
 // ---------- 基础尺寸 ----------
 let size = (CONFIG.petSize || 460) * CONFIG.scale
@@ -263,6 +387,14 @@ let idleDelayTimer = null
 // 情绪：mood -100~100（负=低落，正=开心），energy 0~100，anxiety 0~100，boredom 0~100
 let emotion = { mood: 0, energy: 100, anxiety: 0, boredom: 0 }
 let wakeWordEnabled = false
+let festivalPlayToken = 0
+let festivalActive = false
+let currentFestival = null
+let festivalAutoPlayDone = false
+let lastFestivalPlayToken = null
+let festivalTimer = null
+let settingsFestivalTimer = null
+const FESTIVAL_GIF_DISPLAY_MS = 7000
 
 // ---------- 工具 ----------
 const randomBetween = (min, max) => Math.floor(min + Math.random() * (max - min))
@@ -322,6 +454,114 @@ function emotionBubbleIfAny() {
 
 function assetUrl(name) {
   return new URL(encodeURIComponent(name) + '.webm', ASSET_BASE).href
+}
+
+function stopFestivalPlayback() {
+  festivalPlayToken++
+  festivalActive = false
+  currentFestival = null
+  if (festivalTimer) {
+    clearTimeout(festivalTimer)
+    festivalTimer = null
+  }
+  festivalImage.classList.remove('is-front')
+  festivalVideo.classList.remove('is-front')
+  festivalImage.style.opacity = '0'
+  festivalVideo.style.opacity = '0'
+  festivalVideo.onended = null
+  festivalVideo.pause()
+  festivalVideo.removeAttribute('src')
+  festivalVideo.load()
+  festivalImage.removeAttribute('src')
+}
+
+function startFestivalPlayback(festival) {
+  if (!festival) return false
+  const token = ++festivalPlayToken
+  festivalActive = true
+  currentFestival = festival
+  const useGif = Boolean(festival.gif)
+  if (useGif) {
+    festivalVideo.pause()
+    festivalVideo.removeAttribute('src')
+    festivalVideo.load()
+    festivalImage.src = getFestivalAssetUrl(festival.gif)
+    festivalImage.style.opacity = '1'
+    festivalVideo.style.opacity = '0'
+    festivalImage.classList.add('is-front')
+    festivalVideo.classList.remove('is-front')
+    if (festivalTimer) clearTimeout(festivalTimer)
+    festivalTimer = setTimeout(() => {
+      if (festivalPlayToken === token) stopFestivalPlayback()
+    }, FESTIVAL_GIF_DISPLAY_MS)
+    return true
+  }
+  festivalImage.removeAttribute('src')
+  festivalImage.style.opacity = '0'
+  festivalVideo.src = assetUrl(festival.anim || IDLE)
+  festivalVideo.loop = false
+  festivalVideo.playbackRate = CONFIG.playbackRate
+  festivalVideo.onended = () => {
+    if (festivalPlayToken !== token) return
+    festivalVideo.classList.remove('is-front')
+    festivalVideo.style.opacity = '0'
+    festivalVideo.onended = null
+    if (festivalActive && currentFestival?.id === festival.id) {
+      festivalActive = false
+      currentFestival = null
+      if (currentMode === 'idle') playIdle()
+      else applyResume()
+    }
+  }
+  festivalVideo.classList.add('is-front')
+  festivalVideo.style.opacity = '1'
+  festivalVideo.load()
+  festivalVideo.play().catch(() => {})
+  return true
+}
+
+function playFestivalGreeting(festival, { auto = false } = {}) {
+  if (!festival || !CONFIG.holidayEnabled) return false
+  stopFestivalPlayback()
+  const title = festival.greeting || festival.label || '节日快乐'
+  const detail = festival.detail || '大肥鱼给你送上祝福~'
+  showManualBubble(title, detail, 5000)
+  startFestivalPlayback(festival)
+  festivalAutoPlayDone = true
+  try {
+    localStorage.setItem(FESTIVAL_AUTO_PLAY_KEY, `${getFestivalAutoPlayDateKey()}|${festival.id}`)
+  } catch {}
+  return true
+}
+
+function getTodayFestival(date = new Date()) {
+  return getFestivalMatches(date).at(0) || null
+}
+
+function getActiveFestival() {
+  return CONFIG.holidayEnabled ? getTodayFestival() : null
+}
+
+function syncFestivalAutoPlay() {
+  const festival = getTodayFestival()
+  if (!festival) {
+    festivalAutoPlayDone = false
+    return null
+  }
+  const todayKey = `${getFestivalAutoPlayDateKey()}|${festival.id}`
+  try {
+    festivalAutoPlayDone = localStorage.getItem(FESTIVAL_AUTO_PLAY_KEY) === todayKey
+  } catch {
+    festivalAutoPlayDone = false
+  }
+  return festival
+}
+
+function maybeAutoPlayFestival() {
+  if (!CONFIG.holidayEnabled) return false
+  const festival = syncFestivalAutoPlay()
+  if (!festival || festivalAutoPlayDone || festivalActive) return false
+  return playFestivalGreeting(festival, { auto: true })
 }
 
 // ---------- 视频切换 ----------
@@ -1055,6 +1295,9 @@ function renderEmotionBars(container) {
 
 function renderSettingsPanelContent() {
   const bubbleStatesText = Array.isArray(CONFIG.bubbleStates) ? CONFIG.bubbleStates.join(', ') : ''
+  const todayFestival = getTodayFestival()
+  const festivalButtonLabel = todayFestival ? `播放${todayFestival.label}` : '今日无节日'
+  const festivalButtonDisabled = !todayFestival || !CONFIG.holidayEnabled
   settingsPanel.innerHTML = `
     <h2>🐳 Better DSH Pet 设置</h2>
     <div class="settings-section">
@@ -1088,12 +1331,18 @@ function renderSettingsPanelContent() {
     <div class="settings-section">
       <h3>功能</h3>
       <div class="field"><label>自动吐槽</label><span class="checkbox-field"><input type="checkbox" id="set-roastEnabled" ${CONFIG.roastEnabled ? 'checked' : ''}> 开启</span></div>
+      <div class="field"><label>节日祝福</label><span class="checkbox-field"><input type="checkbox" id="set-holidayEnabled" ${CONFIG.holidayEnabled ? 'checked' : ''}> 开启</span></div>
       <div class="field"><label>气泡模式</label><select id="set-bubbleMode">
         <option value="always" ${CONFIG.bubbleMode === 'always' ? 'selected' : ''}>常驻显示</option>
         <option value="hidden" ${CONFIG.bubbleMode === 'hidden' ? 'selected' : ''}>完全隐藏</option>
         <option value="custom" ${CONFIG.bubbleMode === 'custom' ? 'selected' : ''}>自定义</option>
       </select></div>
       <div class="field"><label>自定义气泡状态</label><textarea id="set-bubbleStates" placeholder="如 SUCCESS,ERROR,WAITING">${bubbleStatesText}</textarea></div>
+    </div>
+    <div class="settings-section" id="settings-festival-section">
+      <h3>今日节日</h3>
+      <div class="field"><label>节日名称</label><span id="set-festival-label">${todayFestival ? todayFestival.label : '今日无节日'}</span></div>
+      <div class="field"><label>节日祝福</label><button id="set-festival-play" type="button" ${festivalButtonDisabled ? 'disabled' : ''} style="padding:6px 10px;border:1px solid #d8d8d8;border-radius:6px;background:${festivalButtonDisabled ? '#f0f1f4' : '#f5f6f8'};cursor:${festivalButtonDisabled ? 'not-allowed' : 'pointer'}">${festivalButtonLabel}</button></div>
     </div>
     <div class="actions">
       <button id="settings-save">保存</button>
@@ -1113,6 +1362,24 @@ function renderSettingsPanelContent() {
 
   settingsPanel.querySelector('#settings-close').addEventListener('click', closeSettings)
   settingsPanel.querySelector('#settings-save').addEventListener('click', saveSettingsPanel)
+  settingsPanel.querySelector('#set-festival-play').addEventListener('click', () => {
+    const festival = getTodayFestival()
+    if (festival) playFestivalGreeting(festival)
+  })
+}
+
+function updateSettingsFestivalSection() {
+  if (!settingsPanel.classList.contains('visible')) return
+  const todayFestival = getTodayFestival()
+  const labelEl = settingsPanel.querySelector('#set-festival-label')
+  const buttonEl = settingsPanel.querySelector('#set-festival-play')
+  if (labelEl) labelEl.textContent = todayFestival ? todayFestival.label : '今日无节日'
+  if (!buttonEl) return
+  const disabled = !todayFestival || !CONFIG.holidayEnabled
+  buttonEl.textContent = todayFestival ? `播放${todayFestival.label}` : '今日无节日'
+  buttonEl.disabled = disabled
+  buttonEl.style.background = disabled ? '#f0f1f4' : '#f5f6f8'
+  buttonEl.style.cursor = disabled ? 'not-allowed' : 'pointer'
 }
 
 function saveSettingsPanel() {
@@ -1131,6 +1398,7 @@ function saveSettingsPanel() {
   const workMinutes = number('#set-workMinutes', CONFIG.workMinutes, 1, 120)
   const breakMinutes = number('#set-breakMinutes', CONFIG.breakMinutes, 1, 60)
   const roastEnabled = val('#set-roastEnabled').checked
+  const holidayEnabled = val('#set-holidayEnabled').checked
   const bubbleMode = val('#set-bubbleMode').value
   const bubbleStates = parseList(val('#set-bubbleStates').value)
   const enabledActions = parseList(val('#set-enabledActions').value)
@@ -1139,6 +1407,7 @@ function saveSettingsPanel() {
   Object.assign(CONFIG, {
     petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
     reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
+    holidayEnabled,
     bubbleMode, bubbleStates, enabledActions, actionOrder,
   })
   for (const video of [videoA, videoB]) {
@@ -1148,19 +1417,30 @@ function saveSettingsPanel() {
   window.petBridge.saveConfig({
     petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
     reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
+    holidayEnabled,
     bubbleMode, bubbleStates, enabledActions, actionOrder,
   })
+  if (holidayEnabled) maybeAutoPlayFestival()
   closeSettings()
 }
 
 function openSettings() {
   renderSettingsPanelContent()
   settingsPanel.classList.add('visible')
+  updateSettingsFestivalSection()
+  if (!settingsFestivalTimer) {
+    settingsFestivalTimer = setInterval(updateSettingsFestivalSection, 60 * 1000)
+    settingsFestivalTimer.unref?.()
+  }
   window.petBridge.setIgnoreMouse(false)
 }
 
 function closeSettings() {
   settingsPanel.classList.remove('visible')
+  if (settingsFestivalTimer) {
+    clearInterval(settingsFestivalTimer)
+    settingsFestivalTimer = null
+  }
   updateClickThrough()
 }
 
@@ -1461,6 +1741,9 @@ function renderSettingsPage() {
     showMenu(lastMenuPos.x, lastMenuPos.y)
   })
   const bubbleStatesText = Array.isArray(CONFIG.bubbleStates) ? CONFIG.bubbleStates.join(', ') : ''
+  const todayFestival = getTodayFestival()
+  const festivalButtonLabel = todayFestival ? `播放${todayFestival.label}` : '今日无节日'
+  const festivalButtonDisabled = !todayFestival || !CONFIG.holidayEnabled
   let activityLevel = CONFIG.activityLevel
   let bubbleMode = CONFIG.bubbleMode
   let enabledActions = CONFIG.enabledActions.length ? CONFIG.enabledActions.slice() : ACTS.slice()
@@ -1487,6 +1770,7 @@ function renderSettingsPage() {
     <div class="ms-field" style="align-items:flex-start"><span>可选动作</span><span id="ms-actionOrderList" class="ms-list"></span></div>
     <div style="font-size:13px;font-weight:600;margin:8px 0 6px;color:#333">功能</div>
     <label class="ms-check"><input type="checkbox" id="ms-roastEnabled" ${CONFIG.roastEnabled ? 'checked' : ''}> 自动吐槽</label>
+    <label class="ms-check"><input type="checkbox" id="ms-holidayEnabled" ${CONFIG.holidayEnabled ? 'checked' : ''}> 节日祝福</label>
     <label class="ms-check"><input type="checkbox" id="ms-voiceEnabled" ${CONFIG.voiceEnabled !== false ? 'checked' : ''}> 启用语音功能（麦克风）</label>
     <label class="ms-check"><input type="checkbox" id="ms-voiceWakeNow" ${wakeWordEnabled ? 'checked' : ''}> 开启语音唤醒（麦克风，立即生效）</label>
     <label class="ms-check"><input type="checkbox" id="ms-voiceWakeAutoStart" ${CONFIG.voiceWakeAutoStart ? 'checked' : ''}> 启动时自动开启语音唤醒</label>
@@ -1495,6 +1779,11 @@ function renderSettingsPage() {
     <label class="ms-check"><input type="checkbox" id="ms-voiceAutoRecord" ${CONFIG.voiceAutoRecord !== false ? 'checked' : ''}> 闲聊时说“大肥鱼”自动录音</label>
     <div class="ms-field"><span>气泡模式</span><span id="ms-bubbleMode" class="ms-seg"></span></div>
     <div class="ms-field"><span>气泡状态</span><textarea id="ms-bubbleStates" placeholder="SUCCESS,ERROR,WAITING">${bubbleStatesText}</textarea></div>
+    <div id="ms-festival-area" style="margin-top:8px;padding-top:8px;border-top:1px solid #eee">
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px;color:#333">今日节日</div>
+      <div class="ms-field"><span>节日名称</span><strong id="ms-festival-label">${todayFestival ? todayFestival.label : '今日无节日'}</strong></div>
+      <div class="ms-field"><span>节日祝福</span><button id="ms-festival-play" type="button" ${festivalButtonDisabled ? 'disabled' : ''} style="padding:4px 8px;border:1px solid #d8d8d8;border-radius:6px;background:${festivalButtonDisabled ? '#f0f1f4' : '#f5f6f8'};cursor:${festivalButtonDisabled ? 'not-allowed' : 'pointer'}">${festivalButtonLabel}</button></div>
+    </div>
   `
   menuEl.appendChild(form)
 
@@ -1645,6 +1934,14 @@ function renderSettingsPage() {
     wakeWordEnabled = voiceWakeNow.checked
     showManualBubble(voiceWakeNow.checked ? '语音唤醒已开启' : '语音唤醒已关闭', voiceWakeNow.checked ? '说“大肥鱼+指令”' : '', 2500)
   })
+  const festivalPlayButton = form.querySelector('#ms-festival-play')
+  if (todayFestival && festivalPlayButton && !festivalButtonDisabled) {
+    festivalPlayButton.addEventListener('click', () => {
+      menuEl.classList.remove('visible')
+      updateClickThrough()
+      playFestivalGreeting(todayFestival)
+    })
+  }
 
   addMenuButton('保存', () => {
     const val = (id) => form.querySelector(id)
@@ -1661,6 +1958,7 @@ function renderSettingsPage() {
     const workMinutes = number('#ms-workMinutes', CONFIG.workMinutes, 1, 120)
     const breakMinutes = number('#ms-breakMinutes', CONFIG.breakMinutes, 1, 60)
     const roastEnabled = val('#ms-roastEnabled').checked
+    const holidayEnabled = val('#ms-holidayEnabled').checked
     const voiceEnabled = val('#ms-voiceEnabled').checked
     const voiceWakeAutoStart = val('#ms-voiceWakeAutoStart').checked
     const voiceSilenceMs = number('#ms-voiceSilenceMs', CONFIG.voiceSilenceMs, 300, 5000)
@@ -1672,6 +1970,7 @@ function renderSettingsPage() {
     Object.assign(CONFIG, {
       petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
       reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
+      holidayEnabled,
       voiceEnabled,
       voiceWakeAutoStart,
       voiceSilenceMs,
@@ -1690,6 +1989,7 @@ function renderSettingsPage() {
     window.petBridge.saveConfig({
       petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
       reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
+      holidayEnabled,
       voiceEnabled,
       voiceWakeAutoStart,
       voiceSilenceMs,
@@ -1697,6 +1997,7 @@ function renderSettingsPage() {
       voiceAutoRecord,
       bubbleMode, bubbleStates, enabledActions: finalEnabledActions, actionOrder: finalActionOrder,
     })
+    if (holidayEnabled) maybeAutoPlayFestival()
     menuPage = 'main'
     showMenu(lastMenuPos.x, lastMenuPos.y)
   })
@@ -1721,6 +2022,11 @@ function renderFeatureSettings() {
   toggleButton('自动吐槽', CONFIG.roastEnabled === true, (next) => {
     CONFIG.roastEnabled = next
     window.petBridge.saveConfig({ roastEnabled: next })
+  })
+  toggleButton('节日祝福', CONFIG.holidayEnabled === true, (next) => {
+    CONFIG.holidayEnabled = next
+    window.petBridge.saveConfig({ holidayEnabled: next })
+    if (next) maybeAutoPlayFestival()
   })
   toggleButton('允许行走', CONFIG.walkEnabled !== false, (next) => {
     CONFIG.walkEnabled = next
@@ -2095,12 +2401,28 @@ function applyStatus(incoming) {
     CONFIG.voiceSilenceMs = Number(incoming.config.voiceSilenceMs) ?? CONFIG.voiceSilenceMs
     CONFIG.voiceAutoSend = incoming.config.voiceAutoSend !== false
     CONFIG.voiceAutoRecord = incoming.config.voiceAutoRecord !== false
+    CONFIG.holidayEnabled = incoming.config.holidayEnabled === true
     CONFIG.scale = Number(incoming.config.scale) || CONFIG.scale
+    if (!CONFIG.holidayEnabled) stopFestivalPlayback()
     // 播放速度变化立即作用到当前/备用视频。
     for (const video of [videoA, videoB]) {
       if (video && !video.paused) video.playbackRate = CONFIG.playbackRate
     }
     applySize()
+    if (!incoming.festivalPlay) maybeAutoPlayFestival()
+  }
+
+  if (incoming.festivalPlay) {
+    const playRequestToken = incoming.festivalPlay.token
+      || `${incoming.festivalPlay.festivalId || ''}:${incoming.festivalPlay.requestedAt || ''}`
+    if (playRequestToken && playRequestToken !== lastFestivalPlayToken) {
+      const festival = incoming.festivalPlay.festivalId
+        ? getFestivalById(incoming.festivalPlay.festivalId)
+        : getTodayFestival()
+      if (festival && playFestivalGreeting(festival)) {
+        lastFestivalPlayToken = playRequestToken
+      }
+    }
   }
 
   if (incoming.tokenUsage) {
@@ -2270,6 +2592,7 @@ if (CONFIG.voiceEnabled !== false && CONFIG.voiceWakeAutoStart && !wakeWordEnabl
 playIdle()
 updateBubble()
 updateClickThrough()
+maybeAutoPlayFestival()
 
 // 情绪缓慢变化：空闲会越来越无聊/疲惫，工作会消耗精力。
 setInterval(() => {
@@ -2281,6 +2604,10 @@ setInterval(() => {
     updateEmotion({ anxiety: 1, boredom: 1 })
   }
 }, 10000)
+
+setInterval(() => {
+  if (CONFIG.holidayEnabled) maybeAutoPlayFestival()
+}, 60 * 1000)
 
 // 看门狗：万一 video 的 ended 事件或 loop 没有按预期工作，这里兜底，
 // 避免宠物停在最后一帧。

@@ -45,6 +45,7 @@ export interface Config {
     voiceSilenceMs?: number;
     voiceAutoSend?: boolean;
     voiceAutoRecord?: boolean;
+    holidayEnabled?: boolean;
 }
 
 /**

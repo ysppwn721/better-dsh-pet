@@ -9,7 +9,8 @@
  *
  * 【对应实现】
  *   lib/index.js —— 监听 DSH session 事件，驱动 Electron 桌面 Helper，
- *   并注册 /plugins/better-dsh-pet/config 设置端点与 /pet 静态资源路由。
+ *   并注册 /plugins/better-dsh-pet/config 设置端点、/plugins/better-dsh-pet/festival
+ *   节日播放端点与 /pet 静态资源路由。
  *
  * ============================================================================
  * @module better-dsh-pet
@@ -21,6 +22,7 @@ import type { WebRoute } from '@deepseek-ai/dsh-host-webserver';
 export declare const name = 'pet';
 /** 需要注入的服务列表（sessions），与 lib/index.js 的 inject 一致 */
 export declare const inject: string[];
+export declare const FESTIVAL_PLAY_ENDPOINT: '/plugins/better-dsh-pet/festival';
 
 /** 插件配置：桌面气泡与状态联动 */
 export interface Config {
@@ -70,6 +72,8 @@ export interface Config {
     voiceAutoSend?: boolean;
     /** 闲聊时说“大肥鱼”自动开始录音。默认 true。 */
     voiceAutoRecord?: boolean;
+    /** 启用节日祝福识别（阳历与农历）。默认 false。 */
+    holidayEnabled?: boolean;
     /** 旧版 /pet 路由的 full 资源根目录。 */
     fullRoot?: string;
     /** Helper 进程选项。 */
