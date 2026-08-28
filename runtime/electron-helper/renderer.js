@@ -388,6 +388,7 @@ let movePlan = null
 let actionOrderIndex = 0
 let idleDelayTimer = null
 // 情绪：mood -100~100（负=低落，正=开心），energy 0~100，anxiety 0~100，boredom 0~100
+const EMOTION_STORAGE_KEY = 'better-dsh-pet:emotion'
 let emotion = { mood: 0, energy: 100, anxiety: 0, boredom: 0 }
 let wakeWordEnabled = false
 let festivalPlayToken = 0
@@ -409,11 +410,40 @@ const pick = (pool, exclude) => {
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
 
+function loadEmotion() {
+  try {
+    const raw = localStorage.getItem(EMOTION_STORAGE_KEY)
+    if (!raw) return
+    const data = JSON.parse(raw)
+    const num = (value, fallback) => {
+      const n = Number(value)
+      return Number.isFinite(n) ? n : fallback
+    }
+    emotion = {
+      mood: clamp(num(data.mood, 0), -100, 100),
+      energy: clamp(num(data.energy, 100), 0, 100),
+      anxiety: clamp(num(data.anxiety, 0), 0, 100),
+      boredom: clamp(num(data.boredom, 0), 0, 100),
+    }
+  } catch {
+    // 读取失败时保持默认情绪。
+  }
+}
+
+function saveEmotion() {
+  try {
+    localStorage.setItem(EMOTION_STORAGE_KEY, JSON.stringify(emotion))
+  } catch {
+    // 存储不可用时静默忽略。
+  }
+}
+
 function updateEmotion(delta) {
   emotion.mood = clamp(emotion.mood + (delta.mood ?? 0), -100, 100)
   emotion.energy = clamp(emotion.energy + (delta.energy ?? 0), 0, 100)
   emotion.anxiety = clamp(emotion.anxiety + (delta.anxiety ?? 0), 0, 100)
   emotion.boredom = clamp(emotion.boredom + (delta.boredom ?? 0), 0, 100)
+  saveEmotion()
 }
 
 function dominantEmotion() {
@@ -2722,6 +2752,7 @@ window.petBridge.onWakeState((enabled) => {
 })
 
 // ---------- 启动 ----------
+loadEmotion()
 if (CONFIG.voiceEnabled !== false && CONFIG.voiceWakeAutoStart && !wakeWordEnabled) {
   window.petBridge.toggleWakeWord()
   wakeWordEnabled = true
