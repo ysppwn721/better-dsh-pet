@@ -538,8 +538,8 @@ function syncFestivalAutoPlay() {
     festivalAutoPlayDone = false
     return null
   }
-  // 每次启动都播放节日祝福，不再限制“每天只播一次”
-  festivalAutoPlayDone = false
+  // 每次启动只自动播放一次：首次由 maybeAutoPlayFestival 播放并置 true，
+  // 之后的状态轮询不会重置该标记，避免动画不断从头重播。
   return festival
 }
 
