@@ -1446,7 +1446,7 @@ function renderChatPanel() {
   chatPanel.innerHTML = `
     <div class="chat-header"><span>🐳 和大肥鱼闲聊</span><span class="chat-close">✕</span></div>
     <div class="chat-messages"></div>
-    <div class="chat-input-row"><span id="chat-mic">🎤</span><input placeholder="说点什么…"><span>发送</span></div>
+    <div class="chat-input-row"><span id="chat-mic">🎤</span><span id="chat-task-send" style="display:none;padding:8px 12px;background:#ff9f43;color:#fff;border-radius:8px;font-size:12px;cursor:pointer;user-select:none;white-space:nowrap">执行任务</span><input placeholder="说点什么…"><span>发送</span></div>
   `
   const close = chatPanel.querySelector('.chat-close')
   close.onmousedown = (e) => { e.preventDefault(); closeChat() }
@@ -1481,6 +1481,17 @@ function renderChatPanel() {
   const send = chatPanel.querySelector('.chat-input-row span:last-child')
   const mic = chatPanel.querySelector('#chat-mic')
   if (CONFIG.voiceEnabled === false) mic.style.display = 'none'
+  const taskBtn = chatPanel.querySelector('#chat-task-send')
+  taskBtn.onmousedown = async (e) => {
+    e.preventDefault()
+    const content = input.value.trim()
+    if (!content) return
+    taskBtn.style.display = 'none'
+    if (chatAppendMsg) chatAppendMsg('pet', '好的，我来执行任务…')
+    const result = await window.petBridge.executeTask(content)
+    const reply = result?.result || '任务执行完成'
+    if (chatAppendMsg) chatAppendMsg('pet', reply)
+  }
   const appendMsg = (role, text) => {
     const div = document.createElement('div')
     div.className = `chat-msg ${role}`
@@ -1494,6 +1505,8 @@ function renderChatPanel() {
     const content = String(text || input.value || '').trim()
     if (!content) return
     input.value = ''
+    const taskBtn = chatPanel.querySelector('#chat-task-send')
+    if (taskBtn) taskBtn.style.display = 'none'
     appendMsg('user', content)
     chatMessages.push({ role: 'user', content })
     appendMsg('pet', '正在想…')
@@ -1656,13 +1669,14 @@ async function handleUserSpeech(text) {
   // 再走独立 LLM 意图分类（不带闲聊历史）
   const result = await window.petBridge.classifyIntent(content)
   if (result?.type === 'command' && result.action && executeAction(result.action, result.args)) return
-  // 复杂任务：交给独立任务执行（方案三，当前为隔离 LLM 执行）
-  if (result?.type === 'task' || (result?.type === 'command' && result.action)) {
-    const taskText = result.task || content
-    if (chatAppendMsg) chatAppendMsg('pet', '好的，我来处理这个任务…')
-    const taskResult = await window.petBridge.executeTask(taskText)
-    const reply = taskResult?.result || '任务执行完成'
-    if (chatAppendMsg) chatAppendMsg('pet', reply)
+  // 识别为任务：不自动执行，填入输入框并显示「执行任务」按钮，等用户手动确认
+  if (result?.type === 'task') {
+    if (!chatPanel.classList.contains('visible')) openChat()
+    const input = chatPanel.querySelector('input')
+    const taskBtn = chatPanel.querySelector('#chat-task-send')
+    if (input) input.value = result.task || content
+    if (taskBtn) taskBtn.style.display = 'inline-block'
+    if (chatAppendMsg) chatAppendMsg('pet', '已识别为任务，确认无误后点击「执行任务」执行；不想执行可直接修改或清空输入框。')
     return
   }
   // 都不是任务 → 进入闲聊（独立上下文）
