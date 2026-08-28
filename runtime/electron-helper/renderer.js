@@ -1997,6 +1997,7 @@ function renderSettingsPage() {
       voiceAutoRecord,
       bubbleMode, bubbleStates, enabledActions: finalEnabledActions, actionOrder: finalActionOrder,
     })
+    window.petBridge.setWakeWord(wakeWord)
     if (holidayEnabled) maybeAutoPlayFestival()
     menuPage = 'main'
     showMenu(lastMenuPos.x, lastMenuPos.y)

@@ -25,6 +25,7 @@ let userHidden = false
 let fullscreenHidden = false
 let fullscreenCheckTimer = null
 let wakeWordProcess = null
+let currentWakeWord = process.env.DSH_PET_WAKE_WORD || '大肥鱼'
 
 function setClickThrough(ignore) {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -425,6 +426,7 @@ try {
 `
   const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
     windowsHide: true,
+    env: { ...process.env, DSH_PET_WAKE_WORD: currentWakeWord },
   })
   let buffer = ''
   child.stdout.on('data', (chunk) => {
@@ -622,6 +624,14 @@ app.whenReady().then(() => {
       startWakeWordListener()
       event.sender.send('pet:wake-state', true)
     }
+  })
+  ipcMain.on('pet:set-wake-word', (event, word) => {
+    currentWakeWord = String(word || '大肥鱼').trim() || '大肥鱼'
+    if (wakeWordProcess) {
+      stopWakeWordListener()
+      startWakeWordListener()
+    }
+    event.sender.send('pet:wake-state', Boolean(wakeWordProcess))
   })
   ipcMain.handle('pet:chat', async (_event, message) => {
     const statusUrl = process.env.DSH_PET_STATUS_URL
