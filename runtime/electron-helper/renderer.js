@@ -172,7 +172,12 @@ const EMOTION_DELTAS = {
   stateError: { mood: -10, energy: -4, anxiety: 10, boredom: -4 },
 }
 
-const LUNAR_DATE_FORMAT = new Intl.DateTimeFormat('zh-CN-u-ca-chinese', { month: 'numeric', day: 'numeric' })
+let LUNAR_DATE_FORMAT = null
+try {
+  LUNAR_DATE_FORMAT = new Intl.DateTimeFormat('zh-CN-u-ca-chinese', { month: 'numeric', day: 'numeric' })
+} catch {
+  LUNAR_DATE_FORMAT = null
+}
 const LUNAR_MONTH_NAMES = ['正月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '冬月', '腊月']
 const FESTIVAL_AUTO_PLAY_KEY = 'better-dsh-pet:festival-auto-play'
 const FESTIVAL_DEFS = [
@@ -227,9 +232,16 @@ function normalizeLunarMonth(value) {
 }
 
 function getLunarDateParts(date = new Date()) {
+  if (!LUNAR_DATE_FORMAT) {
+    return { month: '', day: 0, dayText: '' }
+  }
   const parts = {}
-  for (const part of LUNAR_DATE_FORMAT.formatToParts(date)) {
-    if (part.type !== 'literal') parts[part.type] = part.value
+  try {
+    for (const part of LUNAR_DATE_FORMAT.formatToParts(date)) {
+      if (part.type !== 'literal') parts[part.type] = part.value
+    }
+  } catch {
+    return { month: '', day: 0, dayText: '' }
   }
   return {
     month: normalizeLunarMonth(parts.month || ''),
