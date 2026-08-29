@@ -31,6 +31,7 @@
 - [✨ 功能特性](#-功能特性)
 - [📸 效果预览](#-效果预览)
 - [🚀 快速开始](#-快速开始)
+- [⬇️ 下载说明](#️-下载说明)
 - [🖱️ 使用指南](#️-使用指南)
 - [⚙️ 配置说明](#️-配置说明)
 - [🎭 情绪系统](#-情绪系统)
@@ -299,6 +300,110 @@ dsh plugin --profile web remove better-dsh-pet
 
 ---
 
+## ⬇️ 下载说明
+
+better-dsh-pet 有两类下载：
+
+1. **Electron**：桌宠窗口运行环境，首次启动自动下载；
+2. **SenseVoice 语音模型**：本地离线语音识别模型，需要手动下载（可选增强）。
+
+### Electron 自动下载
+
+- 首次启动 DSH / 桌宠时，如果找不到 Electron，会自动下载到：
+  ```text
+  C:\Users\Administrator\.dsh\electron\electron.exe
+  ```
+- 下载进度会显示在：
+  - 终端（如果你用 `dsh web` 启动且能看到宿主输出）
+  - 日志文件：`C:\Users\Administrator\.dsh\logs\better-dsh-pet-electron.log`
+- 查看最新进度：
+  ```powershell
+  Get-Content "C:\Users\Administrator\.dsh\logs\better-dsh-pet-electron.log" -Tail 20
+  ```
+
+手动触发下载（可在终端直接看进度）：
+
+```powershell
+node "C:\Users\Administrator\.dsh\profiles\web\node_modules\better-dsh-pet\scripts\ensure-electron.mjs"
+```
+
+### SenseVoice 语音模型下载
+
+语音模型**不会自动下载**，需要手动执行一次：
+
+```powershell
+cd C:\Users\Administrator\.dsh\profiles\web\node_modules\better-dsh-pet
+npm run download:sensevoice
+```
+
+脚本会自动尝试多个镜像源，哪个可用就用哪个：
+
+```text
+1. GitHub 官方
+2. ghproxy.net
+3. ghfast.top
+4. gh-proxy.com
+```
+
+下载进度显示在终端，也会写入：
+
+```text
+C:\Users\Administrator\.dsh\logs\better-dsh-pet-sensevoice.log
+```
+
+查看进度：
+
+```powershell
+Get-Content "C:\Users\Administrator\.dsh\logs\better-dsh-pet-sensevoice.log" -Tail 20
+```
+
+模型下载完成后位于：
+
+```text
+C:\Users\Administrator\.dsh\voice\sensevoice\model.int8.onnx
+C:\Users\Administrator\.dsh\voice\sensevoice\tokens.txt
+```
+
+### 如何判断下载完成
+
+| 项目 | 完成标志 |
+|---|---|
+| Electron | `C:\Users\Administrator\.dsh\electron\electron.exe` 存在（约 215MB） |
+| 语音模型 | `C:\Users\Administrator\.dsh\voice\sensevoice\model.int8.onnx` 和 `tokens.txt` 存在 |
+| 下载日志 | 日志末尾出现 `下载完成` |
+
+### 重新下载 / 清除缓存
+
+```powershell
+# 删除 Electron
+Remove-Item "C:\Users\Administrator\.dsh\electron" -Recurse -Force
+
+# 删除语音模型
+Remove-Item "C:\Users\Administrator\.dsh\voice" -Recurse -Force
+```
+
+然后重新启动 DSH 或重新运行上面的下载命令。
+
+### 下载失败排查
+
+- **Electron 解压报“文件正由另一进程使用”**：
+  - 先关闭 DSH / 桌宠，再重新下载；
+  - 或手动运行 `ensure-electron.mjs`。
+- **语音模型一直 0% / fetch failed**：
+  - 脚本会自动切换镜像；
+  - 也可以手动指定镜像：
+    ```powershell
+    $env:DSH_VOICE_MODEL_URL = "https://ghfast.top/https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17.tar.bz2"
+    npm run download:sensevoice
+    ```
+- **升级时提示 EPERM**：
+  - 先完全退出 DSH / 桌宠，再执行：
+    ```bash
+    dsh plugin --profile web add better-dsh-pet@0.3.2
+    ```
+
+---
+
 ## 🖱️ 使用指南
 
 ### 右键菜单
@@ -451,9 +556,9 @@ dsh plugin --profile web remove better-dsh-pet
 
 ### 识别引擎
 
-- 使用 **SenseVoice** 本地模型 + `sherpa-onnx-node`
-- 完全离线，不上传音频
-- 首次使用需要下载模型：
+- 默认使用 **Windows 系统语音识别（SAPI）**，开箱即用
+- 可选安装 **SenseVoice** 本地模型 + `sherpa-onnx-node`，完全离线、更准、不上传音频
+- 首次使用 SenseVoice 需要下载模型：
 
 ```bash
 cd node_modules/better-dsh-pet
@@ -461,6 +566,7 @@ npm run download:sensevoice
 ```
 
 > 模型会下载到 `~/.dsh/voice/sensevoice`。
+> 下载脚本会自动尝试多个镜像源，详细说明见 [⬇️ 下载说明](#️-下载说明)。
 
 ### 唤醒词
 
@@ -538,7 +644,8 @@ npm run download:sensevoice
 不需要手动安装。
 
 - 本插件**不打包 Electron**（npm 包体积限制）
-- 首次启动会自动探测；找不到时自动下载到 `~/.dsh/electron/electron.exe`
+- 首次启动会自动下载到 `~/.dsh/electron/electron.exe`
+- 下载方式 / 进度查看见 [⬇️ 下载说明](#️-下载说明)
 - 也可以通过环境变量指定：
   ```powershell
   $env:DSH_PET_ELECTRON_PATH = "C:\path\to\electron.exe"
@@ -551,6 +658,24 @@ npm run download:sensevoice
 ```text
 better-dsh-pet: cannot resolve Electron executable.
 ```
+
+### Q：语音模型怎么下载？
+
+语音模型是可选增强，不会自动下载。手动执行：
+
+```powershell
+cd C:\Users\Administrator\.dsh\profiles\web\node_modules\better-dsh-pet
+npm run download:sensevoice
+```
+
+详细说明见 [⬇️ 下载说明](#️-下载说明)。
+
+### Q：没有语音模型能使用语音功能吗？
+
+能。
+
+- 没有 SenseVoice 模型时，会自动回退到 **Windows 系统语音识别（SAPI）**
+- 下载 SenseVoice 后，会使用更准的本地离线识别
 
 ### Q：为什么任务识别后没有自动执行？
 
