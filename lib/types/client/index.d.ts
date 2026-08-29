@@ -48,6 +48,7 @@ export interface Config {
     holidayEnabled?: boolean;
     wakeWord?: string;
     taskCwd?: string;
+    weatherCity?: string;
 }
 
 /**

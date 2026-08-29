@@ -78,6 +78,8 @@ export interface Config {
     wakeWord?: string;
     /** 复杂任务工作目录（留空=用户主目录）。 */
     taskCwd?: string;
+    /** 查天气默认城市（留空=自动定位）。 */
+    weatherCity?: string;
     /** 旧版 /pet 路由的 full 资源根目录。 */
     fullRoot?: string;
     /** Helper 进程选项。 */
