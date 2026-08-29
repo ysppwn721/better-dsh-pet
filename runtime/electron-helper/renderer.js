@@ -1628,7 +1628,7 @@ async function sendChatText(content) {
 }
 
 function matchRuleCommand(text) {
-  const t = String(text || '')
+  const t = String(text || '').replace(/[\s\u3000，。！？、,.!?；;：:]+/g, '')
   if (t.includes('停止番茄钟')) return { action: 'pomodoro_stop' }
   if (t.includes('开始番茄钟') || t.includes('番茄钟')) return { action: 'pomodoro_start' }
   if (t.includes('喂食') || t.includes('吃饭')) return { action: 'feed' }
@@ -2704,7 +2704,9 @@ function applyStatus(incoming) {
 }
 
 async function handleVoiceCommand(text) {
-  const command = String(text || '').trim()
+  const raw = String(text || '').trim()
+  // 去掉语音识别常见的空格/标点，避免“开始 番茄 钟”匹配不到“番茄钟”
+  const command = raw.replace(/[\s\u3000，。！？、,.!?；;：:]+/g, '')
   if (!command) {
     showManualBubble('没听清，再说一次吧~', '', 2500)
     return
