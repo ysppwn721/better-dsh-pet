@@ -75,6 +75,9 @@ contextBridge.exposeInMainWorld('petBridge', {
   executeTask(task) {
     return ipcRenderer.invoke('pet:task', task)
   },
+  getWeather(city) {
+    return ipcRenderer.invoke('pet:weather', city)
+  },
   startDictation() {
     ipcRenderer.send('pet:dictation-start')
   },

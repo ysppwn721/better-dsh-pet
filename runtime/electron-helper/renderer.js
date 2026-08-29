@@ -1644,7 +1644,23 @@ function matchRuleCommand(text) {
   if (t.includes('中间') || t.includes('居中')) return { action: 'move_pet', args: { position: 'center' } }
   if (t.includes('上面') || t.includes('顶部') || t.includes('上方')) return { action: 'move_pet', args: { position: 'top' } }
   if (t.includes('下面') || t.includes('底部') || t.includes('下方')) return { action: 'move_pet', args: { position: 'bottom' } }
+  if (t.includes('天气') || t.includes('气温') || t.includes('下雨') || t.includes('下雪')) {
+    const m = t.match(/([\u4e00-\u9fa5]{2,6}?)(?:天气|气温|下雨|下雪)/)
+    let city = m?.[1] || ''
+    city = city.replace(/^(今天|现在|查一下|查查|帮我|看看|本地)$/g, '').trim()
+    return { action: 'weather', args: { city } }
+  }
   return null
+}
+
+async function queryWeather(city) {
+  showManualBubble('正在查询天气~', city ? `城市：${city}` : '默认城市', 2000)
+  const result = await window.petBridge.getWeather(city)
+  if (result?.ok) {
+    showManualBubble(`🌤 ${result.text}`, '天气', 6000)
+  } else {
+    showManualBubble('天气查询失败', result?.error || '请稍后再试~', 3000)
+  }
 }
 
 function executeAction(action, args = {}) {
@@ -1701,6 +1717,9 @@ function executeAction(action, args = {}) {
       showManualBubble(`好的，${minutes}分钟后提醒你`, text, 3000)
       return true
     }
+    case 'weather':
+      void queryWeather(args.city)
+      return true
     default:
       return false
   }
@@ -2741,6 +2760,11 @@ async function handleVoiceCommand(text) {
   } else if (command.includes('设置')) {
     menuPage = 'settings'
     showMenu(lastMenuPos.x, lastMenuPos.y)
+  } else if (command.includes('天气') || command.includes('气温') || command.includes('下雨') || command.includes('下雪')) {
+    const m = command.match(/([\u4e00-\u9fa5]{2,6}?)(?:天气|气温|下雨|下雪)/)
+    let city = m?.[1] || ''
+    city = city.replace(/^(今天|现在|查一下|查查|帮我|看看|本地)$/g, '').trim()
+    void queryWeather(city)
   } else {
     showManualBubble(`你说的是“${command}”？我还没学会~`, '', 3000)
   }

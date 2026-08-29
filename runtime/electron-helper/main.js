@@ -377,6 +377,117 @@ try {
   })
 }
 
+function weatherCodeText(code) {
+  const map = {
+    0: '晴朗', 1: '大致晴朗', 2: '多云', 3: '阴天',
+    45: '雾', 48: '雾凇',
+    51: '小毛毛雨', 53: '毛毛雨', 55: '大毛毛雨',
+    56: '冻毛毛雨', 57: '强冻毛毛雨',
+    61: '小雨', 63: '中雨', 65: '大雨',
+    66: '冻雨', 67: '强冻雨',
+    71: '小雪', 73: '中雪', 75: '大雪',
+    77: '雪粒',
+    80: '小阵雨', 81: '中阵雨', 82: '强阵雨',
+    85: '小阵雪', 86: '大阵雪',
+    95: '雷雨', 96: '雷雨伴冰雹', 99: '强雷雨伴冰雹',
+  }
+  return map[Number(code)] || '未知天气'
+}
+
+function translateWeatherDesc(desc) {
+  const text = String(desc || '').toLowerCase()
+  const map = {
+    'clear': '晴朗', 'sunny': '晴朗', 'partly cloudy': '多云', 'cloudy': '阴天', 'overcast': '阴天',
+    'mist': '薄雾', 'fog': '雾', 'freezing fog': '冻雾',
+    'light rain': '小雨', 'moderate rain': '中雨', 'heavy rain': '大雨', 'rain': '雨',
+    'light snow': '小雪', 'moderate snow': '中雪', 'heavy snow': '大雪', 'snow': '雪',
+    'thundery outbreaks possible': '雷阵雨', 'thunderstorm': '雷雨', 'patchy rain possible': '局部小雨',
+    'patchy snow possible': '局部小雪', 'smoky haze': '烟霾', 'haze': '霾',
+    'light drizzle': '小毛毛雨', 'drizzle': '毛毛雨', 'freezing drizzle': '冻毛毛雨',
+  }
+  for (const [key, zh] of Object.entries(map)) {
+    if (text.includes(key)) return zh
+  }
+  return desc || '未知天气'
+}
+
+async function fetchWeather(city) {
+  const name = String(city || '').trim() || '北京'
+  // 1. Nominatim 中文地理编码 + wttr.in 坐标查询（国内可用性较好）
+  try {
+    const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(name)}&format=json&limit=1`, {
+      headers: { 'User-Agent': 'better-dsh-pet' },
+      signal: AbortSignal.timeout(8000),
+    })
+    if (geoRes.ok) {
+      const geo = await geoRes.json()
+      const loc = geo?.[0]
+      if (loc) {
+        const lat = loc.lat
+        const lon = loc.lon
+        const place = String(loc.display_name || name).split(',')[0] || name
+        const wRes = await fetch(`https://wttr.in/${lat},${lon}?format=j1`, { signal: AbortSignal.timeout(8000) })
+        if (wRes.ok) {
+          const data = await wRes.json()
+          const cur = data?.current_condition?.[0]
+          if (cur) {
+            const temp = Math.round(Number(cur.temp_C) || 0)
+            const desc = translateWeatherDesc(cur.lang_zh?.[0]?.value || cur.weatherDesc?.[0]?.value || '')
+            const hum = cur.humidity
+            return { ok: true, text: `${place} 当前 ${temp}°C，${desc}，湿度 ${hum}%` }
+          }
+        }
+      }
+    }
+  } catch {
+    // 继续 fallback
+  }
+  // 2. Open-Meteo 地理编码 + 预报
+  try {
+    const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=1&language=zh&format=json`, { signal: AbortSignal.timeout(8000) })
+    if (geoRes.ok) {
+      const geo = await geoRes.json()
+      const loc = geo?.results?.[0]
+      if (loc) {
+        const lat = loc.latitude
+        const lon = loc.longitude
+        const place = loc.name || name
+        const region = [loc.admin1, loc.country].filter(Boolean).join(' ')
+        const wxRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=auto`, { signal: AbortSignal.timeout(8000) })
+        if (wxRes.ok) {
+          const wx = await wxRes.json()
+          const cur = wx?.current_weather
+          if (cur) {
+            const temp = Math.round(cur.temperature)
+            const desc = weatherCodeText(cur.weathercode)
+            const wind = Math.round(cur.windspeed)
+            return { ok: true, text: `${place}${region ? ' ' + region : ''} 当前 ${temp}°C，${desc}，风速 ${wind}km/h` }
+          }
+        }
+      }
+    }
+  } catch {
+    // 继续 fallback
+  }
+  // 3. wttr.in 按城市名兜底
+  try {
+    const wRes = await fetch(`https://wttr.in/${encodeURIComponent(name)}?format=j1`, { signal: AbortSignal.timeout(8000) })
+    if (wRes.ok) {
+      const data = await wRes.json()
+      const cur = data?.current_condition?.[0]
+      if (cur) {
+        const temp = Math.round(Number(cur.temp_C) || 0)
+        const desc = translateWeatherDesc(cur.lang_zh?.[0]?.value || cur.weatherDesc?.[0]?.value || '')
+        const hum = cur.humidity
+        return { ok: true, text: `${name} 当前 ${temp}°C，${desc}，湿度 ${hum}%` }
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return { ok: false, error: '天气查询失败，请稍后再试~' }
+}
+
 function speakText(text) {
   const safeText = String(text || '').slice(0, 200)
   if (!safeText) return
@@ -707,6 +818,7 @@ app.whenReady().then(() => {
       return { ok: false, result: '任务执行时网络开小差了~' }
     }
   })
+  ipcMain.handle('pet:weather', async (_event, city) => fetchWeather(city))
   ipcMain.handle('pet:transcribe', async (_event, wavBuffer) => {
     const statusUrl = process.env.DSH_PET_STATUS_URL
     if (!statusUrl || !wavBuffer) return { ok: false, text: '' }
