@@ -8,7 +8,7 @@
  * 下载后放到 ~/.dsh/voice/sensevoice，供宿主端 sherpa-onnx-node 转写使用。
  */
 import { appendFileSync, createWriteStream, existsSync, mkdirSync, readdirSync, rmSync, renameSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import { homedir } from 'node:os'
 import { spawnSync } from 'node:child_process'
 import { Transform } from 'node:stream'
@@ -16,7 +16,20 @@ import { pipeline } from 'node:stream/promises'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
-const DSH_HOME = process.env.DSH_HOME || join(homedir(), '.dsh')
+
+function inferDshHomeFromPackage() {
+  let dir = ROOT
+  while (true) {
+    if (basename(dir) === 'profiles') return dirname(dir)
+    const parent = dirname(dir)
+    if (parent === dir) return undefined
+    dir = parent
+  }
+}
+
+const DSH_HOME = (process.env.DSH_HOME && process.env.DSH_HOME.trim())
+  || inferDshHomeFromPackage()
+  || join(homedir(), '.dsh')
 const MODEL_DIR = process.env.DSH_VOICE_MODEL_DIR || join(DSH_HOME, 'voice', 'sensevoice')
 const DEFAULT_MODEL_URL = 'https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17.tar.bz2'
 const MODEL_URLS = [

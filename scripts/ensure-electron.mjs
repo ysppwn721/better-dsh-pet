@@ -16,12 +16,27 @@
 
 import { appendFileSync, createWriteStream, existsSync, mkdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { Transform } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
+import { fileURLToPath } from 'node:url'
 
-const HOME = process.env.DSH_HOME || join(process.env.USERPROFILE || process.env.HOME || '', '.dsh')
+const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
+
+function inferDshHomeFromPackage() {
+  let dir = ROOT
+  while (true) {
+    if (basename(dir) === 'profiles') return dirname(dir)
+    const parent = dirname(dir)
+    if (parent === dir) return undefined
+    dir = parent
+  }
+}
+
+const HOME = (process.env.DSH_HOME && process.env.DSH_HOME.trim())
+  || inferDshHomeFromPackage()
+  || join(process.env.USERPROFILE || process.env.HOME || '', '.dsh')
 const VERSION = process.env.DSH_PET_ELECTRON_VERSION || '43.3.0'
 const MIRROR = process.env.DSH_PET_ELECTRON_MIRROR || 'https://npmmirror.com/mirrors/electron/'
 const TARGET_DIR = resolve(HOME, 'electron')
