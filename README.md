@@ -276,7 +276,7 @@ dsh plugin --profile web add better-dsh-pet
 > 如果刚发布新版本不到 24 小时，pnpm 11 的 `minimumReleaseAge` 安全策略可能不会自动选最新版，而是退回旧版。此时请指定精确版本安装：
 >
 > ```bash
-> dsh plugin --profile web add better-dsh-pet@0.3.0
+> dsh plugin --profile web add better-dsh-pet@0.3.1
 > ```
 >
 > pnpm 会自动把该版本加入 `minimumReleaseAgeExclude` 并完成安装；也可以等待 24 小时后直接用上面的普通命令。
