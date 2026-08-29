@@ -11,7 +11,6 @@ import { createWriteStream, existsSync, mkdirSync, readdirSync, rmSync, renameSy
 import { join, resolve } from 'node:path'
 import { homedir } from 'node:os'
 import { spawnSync } from 'node:child_process'
-import { pipeline } from 'node:stream/promises'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
@@ -33,11 +32,37 @@ function hasModel() {
   return REQUIRED.every((name) => existsSync(join(MODEL_DIR, name)))
 }
 
-async function download(url, dest) {
+async function download(url, dest, label = 'download') {
   const response = await fetch(url, { redirect: 'follow' })
   if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`)
+  const total = Number(response.headers.get('content-length')) || 0
   const file = createWriteStream(dest)
-  await pipeline(response.body, file)
+  const reader = response.body.getReader()
+  let received = 0
+  let lastLoggedAt = 0
+  let lastPercent = -1
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      received += value.length
+      file.write(value)
+      const percent = total ? Math.floor((received / total) * 100) : 0
+      const shouldLog = total
+        ? (percent !== lastPercent && (percent % 10 === 0 || percent === 100))
+        : (received - lastLoggedAt >= 10 * 1024 * 1024)
+      if (shouldLog) {
+        lastPercent = percent
+        lastLoggedAt = received
+        const mb = (received / 1024 / 1024).toFixed(1)
+        const totalMb = total ? ` / ${(total / 1024 / 1024).toFixed(1)}MB` : ''
+        console.log(`[${label}] ${total ? `${percent}%` : mb} (${mb}MB${totalMb})`)
+      }
+    }
+  } finally {
+    file.end()
+  }
+  console.log(`[${label}] 下载完成：${(received / 1024 / 1024).toFixed(1)}MB`)
 }
 
 function extract(archive, target) {
@@ -68,7 +93,7 @@ async function main() {
   const extractDir = join(MODEL_DIR, '.extract')
   console.log(`[download-sensevoice] downloading model (约 230MB) ...`)
   try {
-    await download(MODEL_URL, archive)
+    await download(MODEL_URL, archive, 'SenseVoice')
     ok('downloaded archive')
     rmSync(extractDir, { recursive: true, force: true })
     extract(archive, extractDir)

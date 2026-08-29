@@ -18,7 +18,6 @@ import { existsSync, mkdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
-import { pipeline } from 'node:stream/promises'
 import { createWriteStream } from 'node:fs'
 
 const HOME = process.env.DSH_HOME || join(process.env.USERPROFILE || process.env.HOME || '', '.dsh')
@@ -35,12 +34,39 @@ const REQUIRED_FILES = [
   'v8_context_snapshot.bin',
 ]
 
-async function download(url, dest) {
+async function download(url, dest, label = 'download') {
   const response = await fetch(url, { redirect: 'follow' })
   if (!response.ok) {
     throw new Error(`download failed: ${response.status} ${response.statusText} (${url})`)
   }
-  await pipeline(response.body, createWriteStream(dest))
+  const total = Number(response.headers.get('content-length')) || 0
+  const file = createWriteStream(dest)
+  const reader = response.body.getReader()
+  let received = 0
+  let lastLoggedAt = 0
+  let lastPercent = -1
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      received += value.length
+      file.write(value)
+      const percent = total ? Math.floor((received / total) * 100) : 0
+      const shouldLog = total
+        ? (percent !== lastPercent && (percent % 10 === 0 || percent === 100))
+        : (received - lastLoggedAt >= 10 * 1024 * 1024)
+      if (shouldLog) {
+        lastPercent = percent
+        lastLoggedAt = received
+        const mb = (received / 1024 / 1024).toFixed(1)
+        const totalMb = total ? ` / ${(total / 1024 / 1024).toFixed(1)}MB` : ''
+        console.log(`[${label}] ${total ? `${percent}%` : mb} (${mb}MB${totalMb})`)
+      }
+    }
+  } finally {
+    file.end()
+  }
+  console.log(`[${label}] 下载完成：${(received / 1024 / 1024).toFixed(1)}MB`)
 }
 
 function extractZip(zipPath, targetDir) {
@@ -80,7 +106,7 @@ async function main() {
 
   try {
     console.log(`[ensure-electron] ${url}`)
-    await download(url, zipPath)
+    await download(url, zipPath, 'Electron')
     extractZip(zipPath, TARGET_DIR)
     if (!existsSync(EXE)) {
       throw new Error('Electron zip extracted, but electron.exe not found')
