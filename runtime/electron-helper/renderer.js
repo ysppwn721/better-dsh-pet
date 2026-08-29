@@ -390,6 +390,7 @@ let idleDelayTimer = null
 // 情绪：mood -100~100（负=低落，正=开心），energy 0~100，anxiety 0~100，boredom 0~100
 const EMOTION_STORAGE_KEY = 'better-dsh-pet:emotion'
 let emotion = { mood: 0, energy: 100, anxiety: 0, boredom: 0 }
+let forceClickThrough = false
 let wakeWordEnabled = false
 let festivalPlayToken = 0
 let festivalActive = false
@@ -1149,9 +1150,16 @@ function updateClickThrough() {
   const overlayVisible = menuEl.classList.contains('visible')
     || settingsPanel.classList.contains('visible')
     || chatPanel.classList.contains('visible')
-  const ignore = !inside && !dragging && !dragState.active && !overlayVisible
+  const ignore = forceClickThrough || (!inside && !dragging && !dragState.active && !overlayVisible)
   window.petBridge.setIgnoreMouse(ignore)
 }
+
+function setForceClickThrough(enabled) {
+  forceClickThrough = !!enabled
+  updateClickThrough()
+}
+
+window.petBridge.onForceClickThrough?.(setForceClickThrough)
 
 document.addEventListener('mousemove', (e) => {
   lastMouse = { x: e.clientX, y: e.clientY }
@@ -2258,6 +2266,18 @@ function renderMainMenu() {
     menuEl.classList.remove('visible')
     updateClickThrough()
     openChat()
+  })
+  addMenuButton(forceClickThrough ? '关闭鼠标穿透' : '开启鼠标穿透', () => {
+    const next = !forceClickThrough
+    setForceClickThrough(next)
+    window.petBridge.setForceClickThrough(next)
+    menuEl.classList.remove('visible')
+    updateClickThrough()
+    showManualBubble(
+      next ? '鼠标穿透已开启' : '鼠标穿透已关闭',
+      next ? '现在可以直接点击穿透大肥鱼' : '',
+      2500,
+    )
   })
   addMenuButton('检查更新', () => {
     menuEl.classList.remove('visible')

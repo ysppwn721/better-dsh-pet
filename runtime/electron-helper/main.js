@@ -26,6 +26,8 @@ let fullscreenHidden = false
 let fullscreenCheckTimer = null
 let wakeWordProcess = null
 let currentWakeWord = process.env.DSH_PET_WAKE_WORD || '大肥鱼'
+let forceClickThrough = false
+let trayToggleVisible = null
 
 function setClickThrough(ignore) {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -75,7 +77,7 @@ function createTray() {
   }
   tray = new Tray(icon)
   tray.setToolTip('Better DSH Pet')
-  const toggleVisible = () => {
+  trayToggleVisible = () => {
     if (!mainWindow || mainWindow.isDestroyed()) return
     if (mainWindow.isVisible()) {
       mainWindow.hide()
@@ -85,8 +87,24 @@ function createTray() {
       userHidden = false
     }
   }
+  updateTrayMenu()
+  tray.on('click', trayToggleVisible)
+}
+
+function updateTrayMenu() {
+  if (!tray) return
+  const toggleForceClickThrough = () => {
+    forceClickThrough = !forceClickThrough
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('pet:force-click-through', forceClickThrough)
+      mainWindow.setIgnoreMouseEvents(forceClickThrough, { forward: true })
+    }
+    updateTrayMenu()
+  }
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: '显示 / 隐藏桌宠', click: toggleVisible },
+    { label: '显示 / 隐藏桌宠', click: trayToggleVisible },
+    { type: 'separator' },
+    { label: forceClickThrough ? '关闭鼠标穿透' : '开启鼠标穿透', click: toggleForceClickThrough },
     { type: 'separator' },
     {
       label: '退出',
@@ -95,7 +113,6 @@ function createTray() {
       },
     },
   ]))
-  tray.on('click', toggleVisible)
 }
 
 // Windows 上资源管理器重启、分辨率/DPI 变化、休眠唤醒等可能让置顶丢失，
@@ -589,6 +606,14 @@ app.whenReady().then(() => {
   })
   ipcMain.on('pet:set-ignore-mouse', (_event, { ignore }) => {
     setClickThrough(ignore === true)
+  })
+  ipcMain.on('pet:set-force-click-through', (_event, enabled) => {
+    forceClickThrough = !!enabled
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('pet:force-click-through', forceClickThrough)
+      mainWindow.setIgnoreMouseEvents(forceClickThrough, { forward: true })
+    }
+    updateTrayMenu()
   })
   ipcMain.on('pet:beep', () => {
     try { shell.beep() } catch { /* 系统不支持时忽略 */ }

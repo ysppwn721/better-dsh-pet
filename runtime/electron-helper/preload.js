@@ -27,6 +27,14 @@ contextBridge.exposeInMainWorld('petBridge', {
   setIgnoreMouse(ignore) {
     ipcRenderer.send('pet:set-ignore-mouse', { ignore })
   },
+  setForceClickThrough(enabled) {
+    ipcRenderer.send('pet:set-force-click-through', enabled)
+  },
+  onForceClickThrough(callback) {
+    const listener = (_event, enabled) => callback(enabled)
+    ipcRenderer.on('pet:force-click-through', listener)
+    return () => ipcRenderer.removeListener('pet:force-click-through', listener)
+  },
   beep() {
     ipcRenderer.send('pet:beep')
   },
