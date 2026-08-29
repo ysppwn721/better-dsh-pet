@@ -67,33 +67,55 @@ function log(msg) {
 }
 
 async function download(url, dest, label = 'download') {
-  const response = await fetch(url, { redirect: 'follow' })
-  if (!response.ok) {
-    throw new Error(`download failed: ${response.status} ${response.statusText} (${url})`)
-  }
-  const total = Number(response.headers.get('content-length')) || 0
-  let received = 0
-  let lastLoggedAt = 0
-  let lastPercent = -1
-  const progress = new Transform({
-    transform(chunk, _encoding, callback) {
-      received += chunk.length
-      const percent = total ? Math.floor((received / total) * 100) : 0
-      const shouldLog = total
-        ? (percent !== lastPercent && (percent % 10 === 0 || percent === 100))
-        : (received - lastLoggedAt >= 10 * 1024 * 1024)
-      if (shouldLog) {
-        lastPercent = percent
-        lastLoggedAt = received
-        const mb = (received / 1024 / 1024).toFixed(1)
-        const totalMb = total ? ` / ${(total / 1024 / 1024).toFixed(1)}MB` : ''
-        log(`[${label}] ${total ? `${percent}%` : mb} (${mb}MB${totalMb})`)
+  const controller = new AbortController()
+  let connected = false
+  let lastChunkAt = Date.now()
+  const connectTimer = setTimeout(() => {
+    if (!connected) controller.abort(new Error('连接超时（30秒未响应）'))
+  }, 30000)
+  let stallTimer
+  try {
+    log(`[${label}] 等待响应...`)
+    const response = await fetch(url, { redirect: 'follow', signal: controller.signal })
+    if (!response.ok) {
+      throw new Error(`download failed: ${response.status} ${response.statusText} (${url})`)
+    }
+    connected = true
+    clearTimeout(connectTimer)
+    const total = Number(response.headers.get('content-length')) || 0
+    let received = 0
+    let lastLoggedAt = 0
+    let lastPercent = -1
+    lastChunkAt = Date.now()
+    stallTimer = setInterval(() => {
+      if (Date.now() - lastChunkAt > 30000) {
+        controller.abort(new Error('下载停滞（30秒无数据）'))
       }
-      callback(null, chunk)
-    },
-  })
-  await pipeline(response.body, progress, createWriteStream(dest))
-  log(`[${label}] 下载完成：${(received / 1024 / 1024).toFixed(1)}MB`)
+    }, 5000)
+    const progress = new Transform({
+      transform(chunk, _encoding, callback) {
+        received += chunk.length
+        lastChunkAt = Date.now()
+        const percent = total ? Math.floor((received / total) * 100) : 0
+        const shouldLog = total
+          ? (percent !== lastPercent && (percent % 10 === 0 || percent === 100))
+          : (received - lastLoggedAt >= 10 * 1024 * 1024)
+        if (shouldLog) {
+          lastPercent = percent
+          lastLoggedAt = received
+          const mb = (received / 1024 / 1024).toFixed(1)
+          const totalMb = total ? ` / ${(total / 1024 / 1024).toFixed(1)}MB` : ''
+          log(`[${label}] ${total ? `${percent}%` : mb} (${mb}MB${totalMb})`)
+        }
+        callback(null, chunk)
+      },
+    })
+    await pipeline(response.body, progress, createWriteStream(dest))
+    log(`[${label}] 下载完成：${(received / 1024 / 1024).toFixed(1)}MB`)
+  } finally {
+    clearTimeout(connectTimer)
+    if (stallTimer) clearInterval(stallTimer)
+  }
 }
 
 function extractZip(zipPath, targetDir) {

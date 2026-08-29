@@ -391,8 +391,9 @@ Remove-Item "C:\Users\Administrator\.dsh\voice" -Recurse -Force
 - **Electron 解压报“文件正由另一进程使用”**：
   - 先关闭 DSH / 桌宠，再重新下载；
   - 或手动运行 `ensure-electron.mjs`。
-- **语音模型一直 0% / fetch failed**：
-  - 脚本会自动切换镜像；
+- **语音模型一直 0% / 进度条半天不动**：
+  - 脚本会在 30 秒无数据后自动切换到下一个镜像；
+  - 如果所有镜像都失败才会报错；
   - 也可以手动指定镜像：
     ```powershell
     $env:DSH_VOICE_MODEL_URL = "https://ghfast.top/https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17.tar.bz2"
