@@ -18,6 +18,8 @@ import { appendFileSync, createWriteStream, existsSync, mkdirSync, rmSync } from
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
+import { Transform } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
 
 const HOME = process.env.DSH_HOME || join(process.env.USERPROFILE || process.env.HOME || '', '.dsh')
 const VERSION = process.env.DSH_PET_ELECTRON_VERSION || '43.3.0'
@@ -50,17 +52,12 @@ async function download(url, dest, label = 'download') {
     throw new Error(`download failed: ${response.status} ${response.statusText} (${url})`)
   }
   const total = Number(response.headers.get('content-length')) || 0
-  const file = createWriteStream(dest)
-  const reader = response.body.getReader()
   let received = 0
   let lastLoggedAt = 0
   let lastPercent = -1
-  try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      received += value.length
-      file.write(value)
+  const progress = new Transform({
+    transform(chunk, _encoding, callback) {
+      received += chunk.length
       const percent = total ? Math.floor((received / total) * 100) : 0
       const shouldLog = total
         ? (percent !== lastPercent && (percent % 10 === 0 || percent === 100))
@@ -72,10 +69,10 @@ async function download(url, dest, label = 'download') {
         const totalMb = total ? ` / ${(total / 1024 / 1024).toFixed(1)}MB` : ''
         log(`[${label}] ${total ? `${percent}%` : mb} (${mb}MB${totalMb})`)
       }
-    }
-  } finally {
-    file.end()
-  }
+      callback(null, chunk)
+    },
+  })
+  await pipeline(response.body, progress, createWriteStream(dest))
   log(`[${label}] 下载完成：${(received / 1024 / 1024).toFixed(1)}MB`)
 }
 
@@ -113,6 +110,7 @@ async function main() {
   const zipName = `electron-v${VERSION}-win32-x64.zip`
   const url = `${MIRROR.replace(/\/$/, '')}/${VERSION}/${zipName}`
   const zipPath = join(tmpdir(), zipName)
+  try { rmSync(zipPath, { force: true }) } catch { /* 清理残留 zip */ }
 
   try {
     log(`[ensure-electron] ${url}`)

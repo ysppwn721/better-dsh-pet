@@ -11,6 +11,8 @@ import { appendFileSync, createWriteStream, existsSync, mkdirSync, readdirSync, 
 import { join, resolve } from 'node:path'
 import { homedir } from 'node:os'
 import { spawnSync } from 'node:child_process'
+import { Transform } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
@@ -47,17 +49,12 @@ async function download(url, dest, label = 'download') {
   const response = await fetch(url, { redirect: 'follow' })
   if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`)
   const total = Number(response.headers.get('content-length')) || 0
-  const file = createWriteStream(dest)
-  const reader = response.body.getReader()
   let received = 0
   let lastLoggedAt = 0
   let lastPercent = -1
-  try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      received += value.length
-      file.write(value)
+  const progress = new Transform({
+    transform(chunk, _encoding, callback) {
+      received += chunk.length
       const percent = total ? Math.floor((received / total) * 100) : 0
       const shouldLog = total
         ? (percent !== lastPercent && (percent % 10 === 0 || percent === 100))
@@ -69,10 +66,10 @@ async function download(url, dest, label = 'download') {
         const totalMb = total ? ` / ${(total / 1024 / 1024).toFixed(1)}MB` : ''
         log(`[${label}] ${total ? `${percent}%` : mb} (${mb}MB${totalMb})`)
       }
-    }
-  } finally {
-    file.end()
-  }
+      callback(null, chunk)
+    },
+  })
+  await pipeline(response.body, progress, createWriteStream(dest))
   log(`[${label}] 下载完成：${(received / 1024 / 1024).toFixed(1)}MB`)
 }
 
@@ -102,6 +99,7 @@ async function main() {
   mkdirSync(MODEL_DIR, { recursive: true })
   const archive = join(MODEL_DIR, 'sensevoice.tar.bz2')
   const extractDir = join(MODEL_DIR, '.extract')
+  try { rmSync(archive, { force: true }) } catch { /* 清理残留压缩包 */ }
   log(`[download-sensevoice] downloading model (约 230MB) ...`)
   try {
     await download(MODEL_URL, archive, 'SenseVoice')
