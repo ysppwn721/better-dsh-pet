@@ -18,7 +18,14 @@ import { fileURLToPath } from 'node:url'
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const DSH_HOME = process.env.DSH_HOME || join(homedir(), '.dsh')
 const MODEL_DIR = process.env.DSH_VOICE_MODEL_DIR || join(DSH_HOME, 'voice', 'sensevoice')
-const MODEL_URL = process.env.DSH_VOICE_MODEL_URL || 'https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17.tar.bz2'
+const DEFAULT_MODEL_URL = 'https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17.tar.bz2'
+const MODEL_URLS = [
+  process.env.DSH_VOICE_MODEL_URL,
+  DEFAULT_MODEL_URL,
+  `https://ghproxy.net/${DEFAULT_MODEL_URL}`,
+  `https://ghfast.top/${DEFAULT_MODEL_URL}`,
+  `https://gh-proxy.com/${DEFAULT_MODEL_URL}`,
+].filter((url, index, arr) => typeof url === 'string' && url.trim() !== '' && arr.indexOf(url) === index)
 const REQUIRED = ['model.int8.onnx', 'tokens.txt']
 const LOG_FILE = join(DSH_HOME, 'logs', 'better-dsh-pet-sensevoice.log')
 
@@ -102,7 +109,20 @@ async function main() {
   try { rmSync(archive, { force: true }) } catch { /* 清理残留压缩包 */ }
   log(`[download-sensevoice] downloading model (约 230MB) ...`)
   try {
-    await download(MODEL_URL, archive, 'SenseVoice')
+    let lastError
+    for (const url of MODEL_URLS) {
+      log(`[download-sensevoice] trying: ${url}`)
+      try {
+        await download(url, archive, 'SenseVoice')
+        lastError = undefined
+        break
+      } catch (error) {
+        lastError = error
+        log(`[download-sensevoice] mirror failed: ${error instanceof Error ? error.message : String(error)}`)
+        try { rmSync(archive, { force: true }) } catch { /* ignore */ }
+      }
+    }
+    if (lastError) throw lastError
     ok('downloaded archive')
     rmSync(extractDir, { recursive: true, force: true })
     extract(archive, extractDir)
