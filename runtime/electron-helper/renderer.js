@@ -1627,6 +1627,17 @@ async function sendChatText(content) {
   }
 }
 
+function extractWeatherCity(text) {
+  const wake = CONFIG.wakeWord || '大肥鱼'
+  let t = String(text || '').replace(/[\s\u3000，。！？、,.!?；;：:]+/g, '')
+  t = t.replace(new RegExp(`^(嗨?${wake})`), '')
+  t = t.replace(/^(查一下|查查|帮我|看看|今天|现在|请问|给我|查|本地)/g, '')
+  const m = t.match(/([\u4e00-\u9fa5]{2,6}?)(?:天气|气温|温度|几度|下雨|下雪|天起|天汽|冷不冷|热不热|晴不晴)/)
+  let city = m?.[1] || ''
+  city = city.replace(/^(今天|现在|查一下|查查|帮我|看看|本地|请问|给我|查)$/g, '').trim()
+  return city
+}
+
 function matchRuleCommand(text) {
   const t = String(text || '').replace(/[\s\u3000，。！？、,.!?；;：:]+/g, '')
   if (t.includes('停止番茄钟')) return { action: 'pomodoro_stop' }
@@ -1645,10 +1656,7 @@ function matchRuleCommand(text) {
   if (t.includes('上面') || t.includes('顶部') || t.includes('上方')) return { action: 'move_pet', args: { position: 'top' } }
   if (t.includes('下面') || t.includes('底部') || t.includes('下方')) return { action: 'move_pet', args: { position: 'bottom' } }
   if (['天气', '气温', '温度', '几度', '下雨', '下雪', '天起', '天汽', '冷不冷', '热不热', '晴不晴'].some((k) => t.includes(k))) {
-    const m = t.match(/([\u4e00-\u9fa5]{2,6}?)(?:天气|气温|温度|几度|下雨|下雪|天起|天汽|冷不冷|热不热|晴不晴)/)
-    let city = m?.[1] || ''
-    city = city.replace(/^(今天|现在|查一下|查查|帮我|看看|本地)$/g, '').trim()
-    return { action: 'weather', args: { city } }
+    return { action: 'weather', args: { city: extractWeatherCity(t) } }
   }
   return null
 }
@@ -2763,10 +2771,7 @@ async function handleVoiceCommand(text) {
     menuPage = 'settings'
     showMenu(lastMenuPos.x, lastMenuPos.y)
   } else if (['天气', '气温', '温度', '几度', '下雨', '下雪', '天起', '天汽', '冷不冷', '热不热', '晴不晴'].some((k) => command.includes(k))) {
-    const m = command.match(/([\u4e00-\u9fa5]{2,6}?)(?:天气|气温|温度|几度|下雨|下雪|天起|天汽|冷不冷|热不热|晴不晴)/)
-    let city = m?.[1] || ''
-    city = city.replace(/^(今天|现在|查一下|查查|帮我|看看|本地)$/g, '').trim()
-    void queryWeather(city)
+    void queryWeather(extractWeatherCity(command))
   } else {
     showManualBubble(`你说的是“${command}”？我还没学会~`, '', 3000)
   }
