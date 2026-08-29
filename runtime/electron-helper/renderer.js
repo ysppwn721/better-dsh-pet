@@ -977,9 +977,12 @@ function applyTasksMessage(message) {
 }
 
 // ---------- 喂食/互动反馈 ----------
-function showManualBubble(message, detail, ttl = 2200) {
+function showManualBubble(message, detail, ttl = 2200, priority = false) {
+  const now = Date.now()
+  // 高优先级气泡（如天气）显示期间，普通动作/状态气泡不能覆盖它。
+  if (manualBubble?.priority && manualBubble.expiresAt > now && !priority) return
   if (manualBubbleTimer) clearTimeout(manualBubbleTimer)
-  manualBubble = { message, detail, expiresAt: Date.now() + ttl }
+  manualBubble = { message, detail, expiresAt: now + ttl, priority }
   manualBubbleTimer = setTimeout(() => {
     manualBubble = null
     manualBubbleTimer = null
@@ -1669,9 +1672,9 @@ async function queryWeather(city) {
   showManualBubble('正在查询天气~', target && target !== '本地' ? `城市：${target}` : '正在定位本地天气', 2000)
   const result = await window.petBridge.getWeather(target)
   if (result?.ok) {
-    showManualBubble(`🌤 ${result.text}`, '天气', 6000)
+    showManualBubble(`🌤 ${result.text}`, '天气', 5000, true)
   } else {
-    showManualBubble('天气查询失败', result?.error || '请稍后再试~', 3000)
+    showManualBubble('天气查询失败', result?.error || '请稍后再试~', 3000, true)
   }
 }
 
