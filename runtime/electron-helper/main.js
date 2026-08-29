@@ -584,10 +584,21 @@ try {
   $choices.Add("嗨\${wake}")
   $grammar = New-Object System.Speech.Recognition.Grammar($choices)
   $recognizer.LoadGrammar($grammar)
+  $recognizer.BabbleTimeout = [TimeSpan]::FromSeconds(5)
+  $recognizer.InitialSilenceTimeout = [TimeSpan]::FromSeconds(5)
+  $recognizer.EndSilenceTimeout = [TimeSpan]::FromSeconds(2)
   while ($true) {
     $result = $recognizer.Recognize()
     if ($result -ne $null) {
-      'CMD:' + $result.Text
+      $text = $result.Text
+      if ($text -eq $wake -or $text -eq "嗨$wake") {
+        $dictation = New-Object System.Speech.Recognition.DictationGrammar
+        $recognizer.LoadGrammar($dictation)
+        $follow = $recognizer.Recognize()
+        $recognizer.UnloadGrammar($dictation)
+        if ($follow -ne $null -and $follow.Text) { $text = $text + $follow.Text }
+      }
+      'CMD:' + $text
     }
   }
 } catch {
