@@ -14,11 +14,10 @@
  *   DSH_PET_ELECTRON_MIRROR      镜像地址（默认 npmmirror）
  */
 
-import { existsSync, mkdirSync, rmSync } from 'node:fs'
+import { appendFileSync, createWriteStream, existsSync, mkdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
-import { createWriteStream } from 'node:fs'
 
 const HOME = process.env.DSH_HOME || join(process.env.USERPROFILE || process.env.HOME || '', '.dsh')
 const VERSION = process.env.DSH_PET_ELECTRON_VERSION || '43.3.0'
@@ -33,6 +32,17 @@ const REQUIRED_FILES = [
   'chrome_100_percent.pak',
   'v8_context_snapshot.bin',
 ]
+const LOG_FILE = join(HOME, 'logs', 'better-dsh-pet-electron.log')
+
+function log(msg) {
+  console.log(msg)
+  try {
+    mkdirSync(join(HOME, 'logs'), { recursive: true })
+    appendFileSync(LOG_FILE, `${msg}\n`)
+  } catch {
+    // 日志写入失败不影响下载。
+  }
+}
 
 async function download(url, dest, label = 'download') {
   const response = await fetch(url, { redirect: 'follow' })
@@ -60,13 +70,13 @@ async function download(url, dest, label = 'download') {
         lastLoggedAt = received
         const mb = (received / 1024 / 1024).toFixed(1)
         const totalMb = total ? ` / ${(total / 1024 / 1024).toFixed(1)}MB` : ''
-        console.log(`[${label}] ${total ? `${percent}%` : mb} (${mb}MB${totalMb})`)
+        log(`[${label}] ${total ? `${percent}%` : mb} (${mb}MB${totalMb})`)
       }
     }
   } finally {
     file.end()
   }
-  console.log(`[${label}] 下载完成：${(received / 1024 / 1024).toFixed(1)}MB`)
+  log(`[${label}] 下载完成：${(received / 1024 / 1024).toFixed(1)}MB`)
 }
 
 function extractZip(zipPath, targetDir) {
@@ -93,11 +103,11 @@ function extractZip(zipPath, targetDir) {
 
 async function main() {
   if (existsSync(EXE)) {
-    console.log(EXE)
+    log(EXE)
     return
   }
 
-  console.log(`[ensure-electron] Electron not found, downloading v${VERSION} ...`)
+  log(`[ensure-electron] Electron not found, downloading v${VERSION} ...`)
   mkdirSync(TARGET_DIR, { recursive: true })
 
   const zipName = `electron-v${VERSION}-win32-x64.zip`
@@ -105,19 +115,19 @@ async function main() {
   const zipPath = join(tmpdir(), zipName)
 
   try {
-    console.log(`[ensure-electron] ${url}`)
+    log(`[ensure-electron] ${url}`)
     await download(url, zipPath, 'Electron')
     extractZip(zipPath, TARGET_DIR)
     if (!existsSync(EXE)) {
       throw new Error('Electron zip extracted, but electron.exe not found')
     }
-    console.log(EXE)
+    log(EXE)
   } finally {
     try { rmSync(zipPath, { force: true }) } catch { /* ignore */ }
   }
 }
 
 main().catch((error) => {
-  console.error(`[ensure-electron] ${error instanceof Error ? error.message : String(error)}`)
+  log(`[ensure-electron] ERROR: ${error instanceof Error ? error.message : String(error)}`)
   process.exit(1)
 })
