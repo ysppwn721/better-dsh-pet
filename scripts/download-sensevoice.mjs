@@ -35,9 +35,9 @@ const DEFAULT_MODEL_URL = 'https://github.com/k2-fsa/sherpa-onnx/releases/downlo
 const MODEL_URLS = [
   process.env.DSH_VOICE_MODEL_URL,
   DEFAULT_MODEL_URL,
-  `https://ghproxy.net/${DEFAULT_MODEL_URL}`,
-  `https://ghfast.top/${DEFAULT_MODEL_URL}`,
   `https://gh-proxy.com/${DEFAULT_MODEL_URL}`,
+  `https://ghfast.top/${DEFAULT_MODEL_URL}`,
+  `https://gh.llkk.cc/${DEFAULT_MODEL_URL}`,
 ].filter((url, index, arr) => typeof url === 'string' && url.trim() !== '' && arr.indexOf(url) === index)
 const REQUIRED = ['model.int8.onnx', 'tokens.txt']
 const LOG_FILE = join(DSH_HOME, 'logs', 'better-dsh-pet-sensevoice.log')
@@ -70,8 +70,8 @@ async function download(url, dest, label = 'download') {
   let connected = false
   let lastChunkAt = Date.now()
   const connectTimer = setTimeout(() => {
-    if (!connected) controller.abort(new Error('连接超时（30秒未响应）'))
-  }, 30000)
+    if (!connected) controller.abort(new Error('连接超时（15秒未响应）'))
+  }, 15000)
   let stallTimer
   try {
     log(`[${label}] 等待响应...`)
@@ -85,10 +85,10 @@ async function download(url, dest, label = 'download') {
     let lastPercent = -1
     lastChunkAt = Date.now()
     stallTimer = setInterval(() => {
-      if (Date.now() - lastChunkAt > 30000) {
-        controller.abort(new Error('下载停滞（30秒无数据）'))
+      if (Date.now() - lastChunkAt > 10000) {
+        controller.abort(new Error('下载停滞（10秒无数据）'))
       }
-    }, 5000)
+    }, 3000)
     const progress = new Transform({
       transform(chunk, _encoding, callback) {
         received += chunk.length
