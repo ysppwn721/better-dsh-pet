@@ -1644,8 +1644,8 @@ function matchRuleCommand(text) {
   if (t.includes('中间') || t.includes('居中')) return { action: 'move_pet', args: { position: 'center' } }
   if (t.includes('上面') || t.includes('顶部') || t.includes('上方')) return { action: 'move_pet', args: { position: 'top' } }
   if (t.includes('下面') || t.includes('底部') || t.includes('下方')) return { action: 'move_pet', args: { position: 'bottom' } }
-  if (t.includes('天气') || t.includes('气温') || t.includes('下雨') || t.includes('下雪')) {
-    const m = t.match(/([\u4e00-\u9fa5]{2,6}?)(?:天气|气温|下雨|下雪)/)
+  if (['天气', '气温', '温度', '几度', '下雨', '下雪', '天起', '天汽', '冷不冷', '热不热', '晴不晴'].some((k) => t.includes(k))) {
+    const m = t.match(/([\u4e00-\u9fa5]{2,6}?)(?:天气|气温|温度|几度|下雨|下雪|天起|天汽|冷不冷|热不热|晴不晴)/)
     let city = m?.[1] || ''
     city = city.replace(/^(今天|现在|查一下|查查|帮我|看看|本地)$/g, '').trim()
     return { action: 'weather', args: { city } }
@@ -2762,8 +2762,8 @@ async function handleVoiceCommand(text) {
   } else if (command.includes('设置')) {
     menuPage = 'settings'
     showMenu(lastMenuPos.x, lastMenuPos.y)
-  } else if (command.includes('天气') || command.includes('气温') || command.includes('下雨') || command.includes('下雪')) {
-    const m = command.match(/([\u4e00-\u9fa5]{2,6}?)(?:天气|气温|下雨|下雪)/)
+  } else if (['天气', '气温', '温度', '几度', '下雨', '下雪', '天起', '天汽', '冷不冷', '热不热', '晴不晴'].some((k) => command.includes(k))) {
+    const m = command.match(/([\u4e00-\u9fa5]{2,6}?)(?:天气|气温|温度|几度|下雨|下雪|天起|天汽|冷不冷|热不热|晴不晴)/)
     let city = m?.[1] || ''
     city = city.replace(/^(今天|现在|查一下|查查|帮我|看看|本地)$/g, '').trim()
     void queryWeather(city)
