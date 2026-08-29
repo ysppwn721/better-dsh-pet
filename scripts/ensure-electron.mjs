@@ -38,7 +38,12 @@ const HOME = (process.env.DSH_HOME && process.env.DSH_HOME.trim())
   || inferDshHomeFromPackage()
   || join(process.env.USERPROFILE || process.env.HOME || '', '.dsh')
 const VERSION = process.env.DSH_PET_ELECTRON_VERSION || '43.3.0'
-const MIRROR = process.env.DSH_PET_ELECTRON_MIRROR || 'https://npmmirror.com/mirrors/electron/'
+const MIRROR_TEMPLATES = [
+  (version, zip) => `${(process.env.DSH_PET_ELECTRON_MIRROR || 'https://npmmirror.com/mirrors/electron/').replace(/\/$/, '')}/${version}/${zip}`,
+  (version, zip) => `https://github.com/electron/electron/releases/download/v${version}/${zip}`,
+  (version, zip) => `https://ghfast.top/https://github.com/electron/electron/releases/download/v${version}/${zip}`,
+  (version, zip) => `https://gh-proxy.com/https://github.com/electron/electron/releases/download/v${version}/${zip}`,
+]
 const TARGET_DIR = resolve(HOME, 'electron')
 const EXE = join(TARGET_DIR, 'electron.exe')
 const REQUIRED_FILES = [
@@ -123,13 +128,25 @@ async function main() {
   mkdirSync(TARGET_DIR, { recursive: true })
 
   const zipName = `electron-v${VERSION}-win32-x64.zip`
-  const url = `${MIRROR.replace(/\/$/, '')}/${VERSION}/${zipName}`
   const zipPath = join(tmpdir(), zipName)
   try { rmSync(zipPath, { force: true }) } catch { /* 清理残留 zip */ }
 
   try {
-    log(`[ensure-electron] ${url}`)
-    await download(url, zipPath, 'Electron')
+    let lastError
+    for (const makeUrl of MIRROR_TEMPLATES) {
+      const url = makeUrl(VERSION, zipName)
+      log(`[ensure-electron] trying: ${url}`)
+      try {
+        await download(url, zipPath, 'Electron')
+        lastError = undefined
+        break
+      } catch (error) {
+        lastError = error
+        log(`[ensure-electron] mirror failed: ${error instanceof Error ? error.message : String(error)}`)
+        try { rmSync(zipPath, { force: true }) } catch { /* ignore */ }
+      }
+    }
+    if (lastError) throw lastError
     extractZip(zipPath, TARGET_DIR)
     if (!existsSync(EXE)) {
       throw new Error('Electron zip extracted, but electron.exe not found')
