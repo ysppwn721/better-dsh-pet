@@ -412,7 +412,38 @@ function translateWeatherDesc(desc) {
 }
 
 async function fetchWeather(city) {
-  const name = String(city || '').trim() || '北京'
+  const rawName = String(city || '').trim()
+  const useLocal = !rawName || rawName === '本地' || rawName === 'default' || rawName === '当前位置'
+  let name = rawName
+  if (useLocal) {
+    try {
+      const ipRes = await fetch('https://ipwho.is/', { signal: AbortSignal.timeout(8000) })
+      if (ipRes.ok) {
+        const ip = await ipRes.json()
+        name = ip.city || '北京'
+        const lat = ip.latitude
+        const lon = ip.longitude
+        if (lat && lon) {
+          const wRes = await fetch(`https://wttr.in/${lat},${lon}?format=j1`, { signal: AbortSignal.timeout(8000) })
+          if (wRes.ok) {
+            const data = await wRes.json()
+            const cur = data?.current_condition?.[0]
+            if (cur) {
+              const temp = Math.round(Number(cur.temp_C) || 0)
+              const desc = translateWeatherDesc(cur.lang_zh?.[0]?.value || cur.weatherDesc?.[0]?.value || '')
+              const hum = cur.humidity
+              return { ok: true, text: `${name} 当前 ${temp}°C，${desc}，湿度 ${hum}%` }
+            }
+          }
+        }
+      } else {
+        name = '北京'
+      }
+    } catch {
+      name = '北京'
+    }
+  }
+  if (!name) name = '北京'
   // 1. Nominatim 中文地理编码 + wttr.in 坐标查询（国内可用性较好）
   try {
     const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(name)}&format=json&limit=1`, {

@@ -1654,8 +1654,8 @@ function matchRuleCommand(text) {
 }
 
 async function queryWeather(city) {
-  showManualBubble('正在查询天气~', city ? `城市：${city}` : '默认城市', 2000)
-  const result = await window.petBridge.getWeather(city)
+  showManualBubble('正在查询天气~', city ? `城市：${city}` : '正在定位本地天气', 2000)
+  const result = await window.petBridge.getWeather(city || '本地')
   if (result?.ok) {
     showManualBubble(`🌤 ${result.text}`, '天气', 6000)
   } else {

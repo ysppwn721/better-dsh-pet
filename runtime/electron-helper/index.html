@@ -56,12 +56,12 @@
       top: 0;
       left: 50%;
       transform: translateX(-50%);
-      width: 340px;
+      width: min(420px, 80vw);
       background: rgba(252, 252, 253, 0.97);
       border: 1px solid rgba(218, 221, 226, 0.9);
       border-radius: 16px;
       box-shadow: 0 6px 24px rgba(0, 0, 0, 0.16);
-      padding: 12px 14px;
+      padding: 14px 16px;
       display: none;
       pointer-events: none;
       color: #25282d;
@@ -69,19 +69,21 @@
     #bubble.visible { display: block; }
     #bubble-title {
       font-weight: 600;
-      font-size: 14px;
+      font-size: 15px;
       margin: 0 0 4px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+      word-break: break-word;
     }
     #bubble-detail {
-      font-size: 12px;
+      font-size: 13px;
       color: #747981;
       margin: 0;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+      word-break: break-word;
     }
     #menu {
       position: absolute;
