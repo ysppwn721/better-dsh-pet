@@ -49,3 +49,4 @@
         wakeWord: '大肥鱼'        # 语音唤醒词
         holidayEnabled: false     # 启用节日祝福（阳历与农历）
         taskCwd: ''               # 复杂任务工作目录（留空=用户主目录）
+        weatherCity: ''           # 查天气默认城市（留空=自动定位）

@@ -1365,6 +1365,7 @@ function renderSettingsPanelContent() {
       <h3>功能</h3>
       <div class="field"><label>自动吐槽</label><span class="checkbox-field"><input type="checkbox" id="set-roastEnabled" ${CONFIG.roastEnabled ? 'checked' : ''}> 开启</span></div>
       <div class="field"><label>节日祝福</label><span class="checkbox-field"><input type="checkbox" id="set-holidayEnabled" ${CONFIG.holidayEnabled ? 'checked' : ''}> 开启</span></div>
+      <div class="field"><label>默认天气城市</label><input type="text" id="set-weatherCity" placeholder="如：北京（留空=自动定位）" value="${CONFIG.weatherCity || ''}"></div>
       <div class="field"><label>气泡模式</label><select id="set-bubbleMode">
         <option value="always" ${CONFIG.bubbleMode === 'always' ? 'selected' : ''}>常驻显示</option>
         <option value="hidden" ${CONFIG.bubbleMode === 'hidden' ? 'selected' : ''}>完全隐藏</option>
@@ -1432,6 +1433,7 @@ function saveSettingsPanel() {
   const breakMinutes = number('#set-breakMinutes', CONFIG.breakMinutes, 1, 60)
   const roastEnabled = val('#set-roastEnabled').checked
   const holidayEnabled = val('#set-holidayEnabled').checked
+  const weatherCity = val('#set-weatherCity').value.trim()
   const bubbleMode = val('#set-bubbleMode').value
   const bubbleStates = parseList(val('#set-bubbleStates').value)
   const enabledActions = parseList(val('#set-enabledActions').value)
@@ -1440,7 +1442,7 @@ function saveSettingsPanel() {
   Object.assign(CONFIG, {
     petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
     reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
-    holidayEnabled,
+    holidayEnabled, weatherCity,
     bubbleMode, bubbleStates, enabledActions, actionOrder,
   })
   for (const video of [videoA, videoB]) {
@@ -1450,7 +1452,7 @@ function saveSettingsPanel() {
   window.petBridge.saveConfig({
     petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
     reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
-    holidayEnabled,
+    holidayEnabled, weatherCity,
     bubbleMode, bubbleStates, enabledActions, actionOrder,
   })
   if (holidayEnabled) maybeAutoPlayFestival()
@@ -1662,8 +1664,10 @@ function matchRuleCommand(text) {
 }
 
 async function queryWeather(city) {
-  showManualBubble('正在查询天气~', city ? `城市：${city}` : '正在定位本地天气', 2000)
-  const result = await window.petBridge.getWeather(city || '本地')
+  const defaultCity = String(CONFIG.weatherCity || '').trim()
+  const target = String(city || '').trim() || defaultCity || '本地'
+  showManualBubble('正在查询天气~', target && target !== '本地' ? `城市：${target}` : '正在定位本地天气', 2000)
+  const result = await window.petBridge.getWeather(target)
   if (result?.ok) {
     showManualBubble(`🌤 ${result.text}`, '天气', 6000)
   } else {
