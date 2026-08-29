@@ -1,6 +1,6 @@
 {
   "name": "better-dsh-pet",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "A desktop-native pet bubble driven by DeepSeek Harness session events: transparent always-on-top Electron window, status-aware animations, voice chat/wake, real DSH task execution, emotion, festival, balance, pomodoro, roast, and DSH settings card.",
   "keywords": [
     "dsh",
