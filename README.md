@@ -277,7 +277,7 @@ dsh plugin --profile web add better-dsh-pet
 > 如果刚发布新版本不到 24 小时，pnpm 11 的 `minimumReleaseAge` 安全策略可能不会自动选最新版，而是退回旧版。此时请指定精确版本安装：
 >
 > ```bash
-> dsh plugin --profile web add better-dsh-pet@0.3.5
+> dsh plugin --profile web add better-dsh-pet@0.3.6
 > ```
 >
 > pnpm 会自动把该版本加入 `minimumReleaseAgeExclude` 并完成安装；也可以等待 24 小时后直接用上面的普通命令。
@@ -402,7 +402,7 @@ Remove-Item "C:\Users\Administrator\.dsh\voice" -Recurse -Force
 - **升级时提示 EPERM**：
   - 先完全退出 DSH / 桌宠，再执行：
     ```bash
-    dsh plugin --profile web add better-dsh-pet@0.3.5
+    dsh plugin --profile web add better-dsh-pet@0.3.6
     ```
 
 ---
@@ -603,6 +603,19 @@ npm run download:sensevoice
 3. 检查设置里“启用大肥鱼”是否开启
 4. 首次启动需要自动下载 Electron，请稍等片刻
 5. 如果下载失败，可手动设置 `DSH_PET_ELECTRON_PATH` 指向 `electron.exe`
+
+### Q：DSH 升到 0.2.x 之后大肥鱼不见了？
+
+0.3.5 及更早版本会有两处不兼容，**升级到 0.3.6** 即可：
+
+1. peer 范围写在 `^0.1.0-rc.6`（只覆盖 0.1.x）。DSH 装配 profile 时会校验 `@deepseek-ai/dsh-*` 的 peer 范围与运行时版本，不匹配就**整个 bundle 被跳过**——插件不加载、设置页也没有卡片。0.3.6 起放宽为 `>=0.1.0-rc.6 <0.3.0`。
+2. DSH 0.2.0 桌面端把宿主跑在 `ELECTRON_RUN_AS_NODE=1` 下，该环境变量会继承给桌宠 Helper，使 `electron.exe` 退化为纯 Node 进程（`require('electron')` 报 `MODULE_NOT_FOUND`），窗口起不来、进程被反复重拉。0.3.6 起在 spawn Helper 前摘掉这个开关。
+
+升级命令：
+
+```bash
+dsh plugin --profile web add better-dsh-pet@0.3.6
+```
 
 ### Q：为什么没有余额显示？
 

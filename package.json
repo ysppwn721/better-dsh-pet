@@ -1,6 +1,6 @@
 {
   "name": "better-dsh-pet",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "A desktop-native pet bubble driven by DeepSeek Harness session events: transparent always-on-top Electron window, status-aware animations, voice chat/wake, real DSH task execution, emotion, festival, balance, pomodoro, roast, and DSH settings card.",
   "keywords": [
     "dsh",
@@ -37,6 +37,7 @@
     "scripts.encode:thumbs —— 转码管线（step03 母版 → assets/thumb 360×360）",
     "scripts.prepack —— 发布前自动健康检查",
     "peerDependencies —— 运行时由宿主（DSH）提供的模块，本包不打包它们",
+    "peerDependencies 范围（0.3.6 起）：DSH 在装配 profile 时会用 semver 校验 @deepseek-ai/dsh-* 的 peer 范围与运行时版本，范围不含运行时版本会导致整个 bundle 被跳过（插件完全不加载、设置页也没有卡片）。原 ^0.1.0-rc.6 只覆盖 0.1.x，在 0.2.x 上必被跳过，故放宽为 >=0.1.0-rc.6 <0.3.0。",
     "================================================"
   ],
   "type": "module",
@@ -86,10 +87,10 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-home-paths": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-host-webserver": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-home-paths": ">=0.1.0-rc.6 <0.3.0",
+    "@deepseek-ai/dsh-host-webserver": ">=0.1.0-rc.6 <0.3.0",
+    "@deepseek-ai/dsh-client-runtime": ">=0.1.0-rc.6 <0.3.0",
+    "@deepseek-ai/dsh-client-ui-slots": ">=0.1.0-rc.6 <0.3.0",
     "react": "^18.2.0"
   }
 }
