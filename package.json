@@ -66,6 +66,7 @@
     "scripts/download-sensevoice.mjs"
   ],
   "scripts": {
+    "test": "node --test \"test/*.test.mjs\"",
     "prepack": "node scripts/prepack-check.js",
     "download:sensevoice": "node scripts/download-sensevoice.mjs"
   },

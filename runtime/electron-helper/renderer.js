@@ -346,6 +346,7 @@ function applyPetPosition() {
   rootEl.style.right = 'auto'
   rootEl.style.bottom = 'auto'
   rootEl.style.transform = 'none'
+  positionBubble()
 }
 applyPetPosition()
 applySize()
@@ -1086,6 +1087,36 @@ function visibleState() {
   return status.state || 'IDLE'
 }
 
+/**
+ * 气泡的字号跟宠物大小走：宠物调小后气泡不再比角色还大。
+ * 以 460px 为基准，下限 0.7 保证还看得清。
+ */
+function bubbleTextScale() {
+  return Math.min(1.15, Math.max(0.7, size / 460))
+}
+
+/**
+ * 气泡贴在角色头顶上方（不是舞台顶部——舞台比角色高，上方有留白），
+ * 头顶按 HIT_BOX.y0 估算；宠物被拖到屏幕上沿时翻到脚下，
+ * 避免气泡被无边框窗口裁掉。
+ */
+function positionBubble() {
+  if (!bubbleEl.classList.contains('visible')) return
+  const stageH = size * 9 / 16
+  const headTop = bottomPad + (HIT_BOX.y0 / CANVAS_H) * stageH
+  const gap = Math.max(4, Math.round(size * 0.02))
+  bubbleEl.classList.remove('below')
+  bubbleEl.style.top = ''
+  bubbleEl.style.bottom = `${Math.round(stageH - headTop + gap)}px`
+  const rect = bubbleEl.getBoundingClientRect()
+  if (rect.top < 4) {
+    // 舞台整体下移了 bottomPad（脚底线对齐），翻到脚下时要补上这段偏移
+    bubbleEl.classList.add('below')
+    bubbleEl.style.bottom = ''
+    bubbleEl.style.top = `${Math.round(bottomPad + stageH + gap)}px`
+  }
+}
+
 function updateBubble() {
   const state = visibleState()
   const manualActive = manualBubble && manualBubble.expiresAt > Date.now()
@@ -1131,9 +1162,13 @@ function updateBubble() {
   }
   bubbleTitle.textContent = title
   bubbleDetail.textContent = detail
+  const ratio = bubbleTextScale()
+  bubbleEl.style.fontSize = `${(15 * ratio).toFixed(1)}px`
+  bubbleEl.style.width = `${Math.round(Math.min(420, Math.max(210, size * 0.95)))}px`
   bubbleEl.style.transform = `translateX(-50%) scale(${CONFIG.bubbleScale})`
   bubbleEl.style.pointerEvents = 'auto'
   bubbleEl.classList.add('visible')
+  positionBubble()
 }
 
 // ---------- 交互 ----------

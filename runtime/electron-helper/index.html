@@ -53,31 +53,43 @@
     #pet-hit.dragging { cursor: grabbing; }
     #bubble {
       position: absolute;
-      top: 0;
+      /* 贴在宠物头顶之上：bottom 100% = 舞台顶边，再加 10px 间距 */
+      bottom: calc(100% + 10px);
+      top: auto;
       left: 50%;
       transform: translateX(-50%);
+      transform-origin: bottom center;
       width: min(420px, 80vw);
       background: rgba(252, 252, 253, 0.97);
       border: 1px solid rgba(218, 221, 226, 0.9);
       border-radius: 16px;
       box-shadow: 0 6px 24px rgba(0, 0, 0, 0.16);
-      padding: 14px 16px;
+      /* 字号/内边距都按 em 走，renderer 只改 font-size 就能整体缩放 */
+      font-size: 15px;
+      padding: 0.95em 1.15em;
       display: none;
       pointer-events: none;
       color: #25282d;
+      z-index: 3;
+    }
+    /* 宠物贴着屏幕上沿时翻到脚下，避免气泡被窗口边缘裁掉 */
+    #bubble.below {
+      bottom: auto;
+      top: calc(100% + 10px);
+      transform-origin: top center;
     }
     #bubble.visible { display: block; }
     #bubble-title {
       font-weight: 600;
-      font-size: 15px;
-      margin: 0 0 4px;
+      font-size: 1em;
+      margin: 0 0 0.28em;
       white-space: normal;
       overflow: visible;
       text-overflow: clip;
       word-break: break-word;
     }
     #bubble-detail {
-      font-size: 13px;
+      font-size: 0.87em;
       color: #747981;
       margin: 0;
       white-space: normal;
