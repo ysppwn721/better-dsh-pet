@@ -38,6 +38,9 @@ contextBridge.exposeInMainWorld('petBridge', {
   beep() {
     ipcRenderer.send('pet:beep')
   },
+  speak(text) {
+    ipcRenderer.send('pet:speak', String(text || ''))
+  },
   saveConfig(patch) {
     ipcRenderer.send('pet:save-config', patch)
   },

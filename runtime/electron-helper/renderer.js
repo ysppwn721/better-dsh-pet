@@ -34,7 +34,13 @@ const CONFIG = {
   holidayEnabled: params.get('holidayEnabled') === '1',
   wakeWord: params.get('wakeWord') || '大肥鱼',
   taskCwd: params.get('taskCwd') || '',
+  speakEnabled: params.get('speakEnabled') !== '0',
+  speakStates: (params.get('speakStates') || 'WAITING').split(',').filter(Boolean),
+  speakChat: params.get('speakChat') !== '0',
 }
+
+// 宿主版本是否认识朗读配置（老宿主读到未知键会整包 400，所以保存时要过滤掉）
+let speakConfigSupported = params.has('speakEnabled')
 
 // ---------- 资源根 ----------
 const ASSET_BASE = new URL('../../assets/thumb/', location.href).href
@@ -290,7 +296,8 @@ const videoB = document.querySelectorAll('video')[1]
 const hitEl = document.getElementById('pet-hit')
 const bubbleEl = document.getElementById('bubble')
 const bubbleTitle = document.getElementById('bubble-title')
-const bubbleDetail = document.getElementById('bubble-detail')
+const bubbleDetailText = document.getElementById('bubble-detail-text')
+const bubbleBalance = document.getElementById('bubble-balance')
 const menuEl = document.getElementById('menu')
 const settingsPanel = document.getElementById('settings-panel')
 const chatPanel = document.getElementById('chat-panel')
@@ -326,6 +333,8 @@ function applySize() {
   petPos.x = Math.min(Math.max(petPos.x, -(HIT_BOX.x0 / 640 * size)), window.innerWidth - (HIT_BOX.x1 / 640 * size))
   petPos.y = Math.min(Math.max(petPos.y, 0), window.innerHeight - size * 9 / 16)
   applyPetPosition()
+  // 尺寸变了，气泡的宽度/字号/位置都要跟着重算；初始化时气泡还没显示，跳过。
+  if (bubbleEl.classList.contains('visible')) updateBubble()
 }
 hitEl.style.left = (HIT_BOX.x0 / 640 * 100) + '%'
 hitEl.style.top = (HIT_BOX.y0 / 360 * 100) + '%'
@@ -1117,6 +1126,47 @@ function positionBubble() {
   }
 }
 
+/** 状态 → 标题颜色：等批准琥珀、出错红、完成绿，思考/工作各一色。 */
+const STATE_COLORS = {
+  WAITING: { title: '#b45309' },
+  ERROR: { title: '#b91c1c' },
+  SUCCESS: { title: '#15803d' },
+  THINKING: { title: '#1d4ed8' },
+  WORKING: { title: '#0f766e' },
+  IDLE: { title: '#25282d' },
+  DISCONNECTED: { title: '#6b7280' },
+}
+
+/** 关键状态用系统语音念一句，配合气泡动效提醒。 */
+const SPEAK_PROMPTS = {
+  WAITING: '有操作等你批准',
+  ERROR: '出错了，回来看看吧',
+  SUCCESS: '这一轮完成啦',
+}
+let lastSpokenState = ''
+let lastSpokenAt = 0
+
+function speak(text) {
+  if (!CONFIG.speakEnabled || !text) return
+  try { window.petBridge.speak(String(text).slice(0, 120)) } catch { /* 桥接不可用时忽略 */ }
+}
+
+function maybeSpeakState(state) {
+  if (!CONFIG.speakEnabled) return
+  const states = Array.isArray(CONFIG.speakStates) && CONFIG.speakStates.length
+    ? CONFIG.speakStates
+    : ['WAITING']
+  if (!states.includes(state)) return
+  const prompt = SPEAK_PROMPTS[state]
+  if (!prompt) return
+  const now = Date.now()
+  // 同一个状态 15 秒内只念一次，避免轮询抖动导致反复出声
+  if (state === lastSpokenState && now - lastSpokenAt < 15000) return
+  lastSpokenState = state
+  lastSpokenAt = now
+  speak(prompt)
+}
+
 function updateBubble() {
   const state = visibleState()
   const manualActive = manualBubble && manualBubble.expiresAt > Date.now()
@@ -1154,17 +1204,29 @@ function updateBubble() {
     title = '大肥鱼正在摸鱼中~'
     detail = ''
   }
-  // 余额显示：优先展示 DeepSeek 账户余额，不再显示 Token。
+  // 余额单独成一段并上色：充足=青绿，偏低=琥珀，见底=红。
+  let balanceText = ''
   if (balance && balance.total !== undefined && balance.total !== null) {
     const symbol = balance.currency === 'CNY' ? '¥' : balance.currency === 'USD' ? '$' : `${balance.currency} `
-    const balanceText = `余额 ${symbol}${balance.total}`
-    detail = detail ? `${detail} · ${balanceText}` : balanceText
+    balanceText = `${symbol}${balance.total}`
+    const total = Number(balance.total)
+    bubbleBalance.classList.toggle('low', Number.isFinite(total) && total > 0 && total < 10)
+    bubbleBalance.classList.toggle('empty', Number.isFinite(total) && total <= 0)
+  } else {
+    bubbleBalance.classList.remove('low', 'empty')
   }
+
+  const palette = STATE_COLORS[state] || STATE_COLORS.IDLE
   bubbleTitle.textContent = title
-  bubbleDetail.textContent = detail
+  bubbleTitle.style.color = palette.title
+  bubbleDetailText.textContent = detail
+  bubbleBalance.textContent = balanceText ? `余额 ${balanceText}` : ''
+  // 等批准/出错时整块呼吸，提醒用户切回去处理
+  bubbleEl.classList.toggle('alert', state === 'WAITING')
+  bubbleEl.classList.toggle('alert-error', state === 'ERROR')
   const ratio = bubbleTextScale()
   bubbleEl.style.fontSize = `${(15 * ratio).toFixed(1)}px`
-  bubbleEl.style.width = `${Math.round(Math.min(420, Math.max(210, size * 0.95)))}px`
+  bubbleEl.style.width = `${Math.round(Math.min(460, Math.max(200, size * 0.92)))}px`
   bubbleEl.style.transform = `translateX(-50%) scale(${CONFIG.bubbleScale})`
   bubbleEl.style.pointerEvents = 'auto'
   bubbleEl.classList.add('visible')
@@ -1403,6 +1465,8 @@ function renderSettingsPanelContent() {
       <h3>功能</h3>
       <div class="field"><label>自动吐槽</label><span class="checkbox-field"><input type="checkbox" id="set-roastEnabled" ${CONFIG.roastEnabled ? 'checked' : ''}> 开启</span></div>
       <div class="field"><label>节日祝福</label><span class="checkbox-field"><input type="checkbox" id="set-holidayEnabled" ${CONFIG.holidayEnabled ? 'checked' : ''}> 开启</span></div>
+      <div class="field"><label>语音朗读</label><span class="checkbox-field"><input type="checkbox" id="set-speakEnabled" ${CONFIG.speakEnabled ? 'checked' : ''}> 开启（系统语音）</span></div>
+      <div class="field"><label>朗读状态</label><textarea id="set-speakStates" placeholder="如 WAITING,ERROR,SUCCESS">${(CONFIG.speakStates || []).join(', ')}</textarea></div>
       <div class="field"><label>默认天气城市</label><input type="text" id="set-weatherCity" placeholder="如：北京（留空=自动定位）" value="${CONFIG.weatherCity || ''}"></div>
       <div class="field"><label>气泡模式</label><select id="set-bubbleMode">
         <option value="always" ${CONFIG.bubbleMode === 'always' ? 'selected' : ''}>常驻显示</option>
@@ -1471,6 +1535,8 @@ function saveSettingsPanel() {
   const breakMinutes = number('#set-breakMinutes', CONFIG.breakMinutes, 1, 60)
   const roastEnabled = val('#set-roastEnabled').checked
   const holidayEnabled = val('#set-holidayEnabled').checked
+  const speakEnabled = val('#set-speakEnabled').checked
+  const speakStates = parseList(val('#set-speakStates').value)
   const weatherCity = val('#set-weatherCity').value.trim()
   const bubbleMode = val('#set-bubbleMode').value
   const bubbleStates = parseList(val('#set-bubbleStates').value)
@@ -1480,19 +1546,25 @@ function saveSettingsPanel() {
   Object.assign(CONFIG, {
     petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
     reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
-    holidayEnabled, weatherCity,
+    holidayEnabled, weatherCity, speakEnabled, speakStates,
     bubbleMode, bubbleStates, enabledActions, actionOrder,
   })
   for (const video of [videoA, videoB]) {
     if (video) video.playbackRate = playbackRate
   }
   applySize()
-  window.petBridge.saveConfig({
+  const patch = {
     petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
     reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
-    holidayEnabled, weatherCity,
+    holidayEnabled, weatherCity, speakEnabled, speakStates,
     bubbleMode, bubbleStates, enabledActions, actionOrder,
-  })
+  }
+  if (!speakConfigSupported) {
+    // 老宿主不认这两个键，带上会让整次 PATCH 被 400 拒掉
+    delete patch.speakEnabled
+    delete patch.speakStates
+  }
+  window.petBridge.saveConfig(patch)
   if (holidayEnabled) maybeAutoPlayFestival()
   closeSettings()
 }
@@ -1593,6 +1665,7 @@ function renderChatPanel() {
     appendMsg('pet', '正在想…')
     const result = await window.petBridge.sendChat(content)
     const reply = result?.reply || '大肥鱼走神了，再说一遍吧~'
+    if (CONFIG.speakChat) speak(reply)
     const last = messagesEl.querySelector('.chat-msg.pet:last-child')
     if (last) last.textContent = reply
     chatMessages.push({ role: 'assistant', content: reply })
@@ -2659,6 +2732,10 @@ function applyStatus(incoming) {
     CONFIG.voiceAutoSend = incoming.config.voiceAutoSend !== false
     CONFIG.voiceAutoRecord = incoming.config.voiceAutoRecord !== false
     CONFIG.holidayEnabled = incoming.config.holidayEnabled === true
+    CONFIG.speakEnabled = incoming.config.speakEnabled !== false
+    CONFIG.speakStates = Array.isArray(incoming.config.speakStates) ? incoming.config.speakStates : CONFIG.speakStates
+    CONFIG.speakChat = incoming.config.speakChat !== false
+    if (Object.prototype.hasOwnProperty.call(incoming.config, 'speakEnabled')) speakConfigSupported = true
     CONFIG.wakeWord = incoming.config.wakeWord || CONFIG.wakeWord
     CONFIG.taskCwd = incoming.config.taskCwd || CONFIG.taskCwd
     CONFIG.scale = Number(incoming.config.scale) || CONFIG.scale
@@ -2734,6 +2811,7 @@ function applyStatus(incoming) {
 
   const nextState = incoming.state || 'IDLE'
   if (nextState !== currentState) {
+    maybeSpeakState(nextState)
     applyStateMessage({
       state: nextState,
       message: incoming.message,
