@@ -41,6 +41,11 @@ contextBridge.exposeInMainWorld('petBridge', {
   speak(text) {
     ipcRenderer.send('pet:speak', String(text || ''))
   },
+  onSpeakAudio(callback) {
+    const listener = (_event, file) => callback(file)
+    ipcRenderer.on('pet:speak-audio', listener)
+    return () => ipcRenderer.removeListener('pet:speak-audio', listener)
+  },
   saveConfig(patch) {
     ipcRenderer.send('pet:save-config', patch)
   },

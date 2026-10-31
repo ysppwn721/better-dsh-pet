@@ -35,8 +35,10 @@ const CONFIG = {
   wakeWord: params.get('wakeWord') || '大肥鱼',
   taskCwd: params.get('taskCwd') || '',
   speakEnabled: params.get('speakEnabled') !== '0',
-  speakStates: (params.get('speakStates') || 'WAITING').split(',').filter(Boolean),
+  speakStates: (params.get('speakStates') || 'WAITING,SUCCESS,ERROR').split(',').filter(Boolean),
   speakChat: params.get('speakChat') !== '0',
+  voiceEngine: params.get('voiceEngine') || 'edge',
+  voiceName: params.get('voiceName') || 'zh-CN-XiaoyiNeural',
 }
 
 // 宿主版本是否认识朗读配置（老宿主读到未知键会整包 400，所以保存时要过滤掉）
@@ -1151,6 +1153,22 @@ function speak(text) {
   try { window.petBridge.speak(String(text).slice(0, 120)) } catch { /* 桥接不可用时忽略 */ }
 }
 
+// Edge TTS 由主进程合成 mp3，这里负责播放；新的一句会打断上一句
+let speakAudioEl = null
+window.petBridge.onSpeakAudio?.((file) => {
+  try {
+    if (speakAudioEl) {
+      speakAudioEl.pause()
+      speakAudioEl = null
+    }
+    if (!file) return
+    speakAudioEl = new Audio(`file:///${String(file).replace(/\\/g, '/')}`)
+    speakAudioEl.play().catch(() => {})
+  } catch {
+    // 播放失败时静默，气泡照常显示
+  }
+})
+
 function maybeSpeakState(state) {
   if (!CONFIG.speakEnabled) return
   const states = Array.isArray(CONFIG.speakStates) && CONFIG.speakStates.length
@@ -1467,6 +1485,11 @@ function renderSettingsPanelContent() {
       <div class="field"><label>节日祝福</label><span class="checkbox-field"><input type="checkbox" id="set-holidayEnabled" ${CONFIG.holidayEnabled ? 'checked' : ''}> 开启</span></div>
       <div class="field"><label>语音朗读</label><span class="checkbox-field"><input type="checkbox" id="set-speakEnabled" ${CONFIG.speakEnabled ? 'checked' : ''}> 开启（系统语音）</span></div>
       <div class="field"><label>朗读状态</label><textarea id="set-speakStates" placeholder="如 WAITING,ERROR,SUCCESS">${(CONFIG.speakStates || []).join(', ')}</textarea></div>
+      <div class="field"><label>朗读引擎</label><select id="set-voiceEngine">
+        <option value="edge" ${CONFIG.voiceEngine !== 'sapi' ? 'selected' : ''}>Edge 神经网络（推荐）</option>
+        <option value="sapi" ${CONFIG.voiceEngine === 'sapi' ? 'selected' : ''}>Windows 系统语音</option>
+      </select></div>
+      <div class="field"><label>Edge 音色</label><input type="text" id="set-voiceName" value="${CONFIG.voiceName || ''}" placeholder="zh-CN-XiaoyiNeural"></div>
       <div class="field"><label>默认天气城市</label><input type="text" id="set-weatherCity" placeholder="如：北京（留空=自动定位）" value="${CONFIG.weatherCity || ''}"></div>
       <div class="field"><label>气泡模式</label><select id="set-bubbleMode">
         <option value="always" ${CONFIG.bubbleMode === 'always' ? 'selected' : ''}>常驻显示</option>
@@ -1537,6 +1560,8 @@ function saveSettingsPanel() {
   const holidayEnabled = val('#set-holidayEnabled').checked
   const speakEnabled = val('#set-speakEnabled').checked
   const speakStates = parseList(val('#set-speakStates').value)
+  const voiceEngine = val('#set-voiceEngine').value === 'sapi' ? 'sapi' : 'edge'
+  const voiceName = val('#set-voiceName').value.trim() || 'zh-CN-XiaoyiNeural'
   const weatherCity = val('#set-weatherCity').value.trim()
   const bubbleMode = val('#set-bubbleMode').value
   const bubbleStates = parseList(val('#set-bubbleStates').value)
@@ -1546,7 +1571,7 @@ function saveSettingsPanel() {
   Object.assign(CONFIG, {
     petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
     reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
-    holidayEnabled, weatherCity, speakEnabled, speakStates,
+    holidayEnabled, weatherCity, speakEnabled, speakStates, voiceEngine, voiceName,
     bubbleMode, bubbleStates, enabledActions, actionOrder,
   })
   for (const video of [videoA, videoB]) {
@@ -1556,13 +1581,15 @@ function saveSettingsPanel() {
   const patch = {
     petSize, moveChance, actionDelayMs, playbackRate, activityLevel,
     reducedMotion, walkEnabled, workMinutes, breakMinutes, roastEnabled,
-    holidayEnabled, weatherCity, speakEnabled, speakStates,
+    holidayEnabled, weatherCity, speakEnabled, speakStates, voiceEngine, voiceName,
     bubbleMode, bubbleStates, enabledActions, actionOrder,
   }
   if (!speakConfigSupported) {
-    // 老宿主不认这两个键，带上会让整次 PATCH 被 400 拒掉
+    // 老宿主不认这些新键，带上会让整次 PATCH 被 400 拒掉
     delete patch.speakEnabled
     delete patch.speakStates
+    delete patch.voiceEngine
+    delete patch.voiceName
   }
   window.petBridge.saveConfig(patch)
   if (holidayEnabled) maybeAutoPlayFestival()

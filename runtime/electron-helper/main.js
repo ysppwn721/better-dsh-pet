@@ -7,6 +7,7 @@
  */
 const { app, BrowserWindow, ipcMain, screen, shell, Tray, Menu, nativeImage, session } = require('electron')
 const path = require('node:path')
+const os = require('node:os')
 const { spawn, execFile } = require('node:child_process')
 const { existsSync, readFileSync } = require('node:fs')
 
@@ -519,9 +520,50 @@ async function fetchWeather(city) {
   return { ok: false, error: '天气查询失败，请稍后再试~' }
 }
 
-function speakText(text) {
-  const safeText = String(text || '').slice(0, 200)
-  if (!safeText) return
+/**
+ * 朗读一句话。
+ * 默认走 Edge 神经网络语音（音质明显好于系统 SAPI），失败时自动回退 SAPI。
+ */
+function resolvePython() {
+  const explicit = process.env.DSH_PET_PYTHON
+  const candidates = [
+    explicit,
+    path.join(os.homedir(), '.dsh', 'dsh-runtimes', 'dsh-primary-runtime', 'dependencies', 'python', 'python.exe'),
+    'python',
+  ].filter(Boolean)
+  for (const candidate of candidates) {
+    try {
+      if (candidate === 'python' || existsSync(candidate)) return candidate
+    } catch { /* ignore */ }
+  }
+  return 'python'
+}
+
+function speakViaEdge(text) {
+  try {
+    const voice = process.env.DSH_PET_VOICE_NAME || 'zh-CN-XiaoyiNeural'
+    const file = path.join(os.tmpdir(), `dsh-pet-tts-${Date.now()}.mp3`)
+    execFile(
+      resolvePython(),
+      ['-m', 'edge_tts', '--voice', voice, '--text', text, '--write-media', file],
+      { timeout: 20000, windowsHide: true },
+      (error) => {
+        if (error || !existsSync(file)) {
+          speakViaSapi(text)
+          return
+        }
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('pet:speak-audio', file)
+        }
+      },
+    )
+    return true
+  } catch {
+    return false
+  }
+}
+
+function speakViaSapi(text) {
   const script = `
 Add-Type -AssemblyName System.Speech
 try {
@@ -532,8 +574,15 @@ try {
   execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
     timeout: 15000,
     windowsHide: true,
-    env: { ...process.env, DICT_TEXT: safeText },
+    env: { ...process.env, DICT_TEXT: text },
   }, () => {})
+}
+
+function speakText(text) {
+  const safeText = String(text || '').slice(0, 200).trim()
+  if (!safeText) return
+  if ((process.env.DSH_PET_VOICE_ENGINE || 'edge') !== 'sapi' && speakViaEdge(safeText)) return
+  speakViaSapi(safeText)
 }
 
 function sendVoiceResult(text) {
@@ -696,6 +745,8 @@ function createWindow() {
       speakEnabled: process.env.DSH_PET_SPEAK_ENABLED === '0' ? '0' : '1',
       speakStates: process.env.DSH_PET_SPEAK_STATES || 'WAITING',
       speakChat: process.env.DSH_PET_SPEAK_CHAT === '0' ? '0' : '1',
+      voiceEngine: process.env.DSH_PET_VOICE_ENGINE || 'edge',
+      voiceName: process.env.DSH_PET_VOICE_NAME || 'zh-CN-XiaoyiNeural',
       wakeWord: process.env.DSH_PET_WAKE_WORD || '大肥鱼',
       taskCwd: process.env.DSH_PET_TASK_CWD || '',
     },
